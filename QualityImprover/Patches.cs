@@ -221,5 +221,73 @@ namespace QualityImprover
                 return num;
             }
         }
+        [HarmonyPatch(typeof(PLShipInfo), "RevealCrewRepClicked")]
+        class RevealComms 
+        {
+            static bool Prefix(PLShipInfo __instance, PhotonMessageInfo pmi) 
+            {
+                PLServer.Instance.IsCrewRepRevealed = true;
+                for(int i = 0; i <= 5; i++) 
+                {
+                    if (PLServer.Instance.RepLevels[i] * 0.05f > UnityEngine.Random.value)
+                    {
+                        foreach (PLShipInfoBase plshipInfoBase in PLEncounterManager.Instance.AllShips.Values)
+                        {
+                            if (plshipInfoBase != null && plshipInfoBase != __instance && plshipInfoBase.FactionID == i && plshipInfoBase.HostileShips.Contains(__instance.ShipID))
+                            {
+                                if(plshipInfoBase.TargetShip == __instance) 
+                                {
+                                    plshipInfoBase.TargetShip = null;
+                                    plshipInfoBase.TargetShip_ForAI = null;
+                                    plshipInfoBase.TargetSpaceTarget = null;
+                                }
+                                plshipInfoBase.HostileShips.Remove(__instance.ShipID);
+                                __instance.HostileShips.Remove(plshipInfoBase.ShipID);
+                            }
+                        }
+                    }
+                }
+                if (PLServer.Instance != null && PhotonNetwork.isMasterClient && __instance.GetIsPlayerShip())
+                {
+                    PLPlayer playerForPhotonPlayer = PLServer.GetPlayerForPhotonPlayer(pmi.sender);
+                    if (playerForPhotonPlayer != null && playerForPhotonPlayer.TeamID == 0 && !playerForPhotonPlayer.IsBot)
+                    {
+                        PLPlayer cachedFriendlyPlayerOfClass = PLServer.Instance.GetCachedFriendlyPlayerOfClass(0);
+                        if (cachedFriendlyPlayerOfClass != null && playerForPhotonPlayer != cachedFriendlyPlayerOfClass)
+                        {
+                            PLServer.Instance.photonView.RPC("AddNotificationLocalize", cachedFriendlyPlayerOfClass.GetPhotonPlayer(), new object[]
+                            {
+                        "[PL] has revealed the crew's reputation",
+                        playerForPhotonPlayer.GetPlayerID(),
+                        PLServer.Instance.GetEstimatedServerMs() + 6000,
+                        true
+                            });
+                        }
+                    }
+                }
+                return false;
+            }
+        }
+        [HarmonyPatch(typeof(PLShipInfoBase), "ShouldBeHostileToShip")]
+        class HostilityCode 
+        {
+            static bool Prefix(PLShipInfo __instance,ref bool __result, PLShipInfoBase inShip) 
+            {
+                if (inShip != null && !__instance.HostileShips.Contains(inShip.ShipID)) 
+                {
+                    if (inShip.GetIsPlayerShip() && PLServer.Instance.IsCrewRepRevealed && __instance.FactionID != 6 && __instance.FactionID != -1 && PLServer.Instance.RepLevels[__instance.FactionID] > 0 && __instance.ShipTypeID != EShipType.E_BEACON && !__instance.HasModifier(EShipModifierType.CORRUPTED))
+                    {
+                        __result = false;
+                        return false;
+                    }
+                    else if (__instance.GetIsPlayerShip() && inShip.ShipTypeID != EShipType.E_BEACON && inShip.FactionID != 6 && inShip.FactionID != -1 && PLServer.Instance.RepLevels[inShip.FactionID] > 0 && inShip.HasModifier(EShipModifierType.CORRUPTED)) 
+                    {
+                        __result = false;
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
     }
 }
