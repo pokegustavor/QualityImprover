@@ -291,7 +291,7 @@ namespace QualityImprover
             }
         }
         [HarmonyPatch(typeof(PLShipInfo),"Update")]
-        class ReflectWDFix 
+        class ReflectWDPTFix 
         {
             static void Prefix(PLShipInfo __instance, ref List<GameObject> ___SysInstUIRoots, ref bool ___reflection_AppliedToShipWorldUI, ref Image ___DialogueChoiceBG, ref Image ___DialogueTextBG) 
             {
@@ -533,6 +533,16 @@ namespace QualityImprover
                 targetTransform.localScale = localScale;
             }
         }
-
+        [HarmonyPatch(typeof(PLServer), "SpawnPlayerShip")]
+        class NoAOGStart 
+        {
+            static void Postfix(PLServer __instance) 
+            {
+                if (PLEncounterManager.Instance.PlayerShip.ShipTypeID == EShipType.E_CIVILIAN_STARTING_SHIP || PLEncounterManager.Instance.PlayerShip.ShipTypeID == EShipType.OLDWARS_HUMAN)
+                {
+                    PLEncounterManager.Instance.PlayerShip.FactionID = -1;
+                }
+            }
+        }
     }
 }
