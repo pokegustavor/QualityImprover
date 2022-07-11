@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System;
 using UnityEngine;
 using CodeStage.AntiCheat.ObscuredTypes;
+using UnityEngine.UI;
 namespace QualityImprover
 {
     internal class Patches
@@ -289,5 +290,249 @@ namespace QualityImprover
                 return true;
             }
         }
+        [HarmonyPatch(typeof(PLShipInfo),"Update")]
+        class ReflectWDFix 
+        {
+            static void Prefix(PLShipInfo __instance, ref List<GameObject> ___SysInstUIRoots, ref bool ___reflection_AppliedToShipWorldUI, ref Image ___DialogueChoiceBG, ref Image ___DialogueTextBG) 
+            {
+                if ((__instance.ShipTypeID == EShipType.E_WDCRUISER || __instance.ShipTypeID == EShipType.E_DESTROYER) && PLServer.Instance != null && ___DialogueChoiceBG != null && ___DialogueTextBG != null && ___SysInstUIRoots != null && ___SysInstUIRoots.Count > 0 && ___reflection_AppliedToShipWorldUI != PLServer.Instance.IsReflection_FlipIsActiveLocal)
+                {
+                    FlipLocalScale(___DialogueChoiceBG.transform);
+                    FlipLocalScale(___DialogueTextBG.transform);
+                    foreach (GameObject sysPower in ___SysInstUIRoots)
+                    {
+                        if (sysPower != null)
+                        {
+                            FlipLocalScale(sysPower.transform);
+                        }
+                    }
+                }
+                else if (__instance.ShipTypeID == EShipType.E_POLYTECH_SHIP && ___reflection_AppliedToShipWorldUI != PLServer.Instance.IsReflection_FlipIsActiveLocal)
+                {
+                    List<PLEngineerCoolantScreen> engineerCoolantScreens = new List<PLEngineerCoolantScreen>();
+                    List<PLEngineerReactorScreen> engineerReactorScreens = new List<PLEngineerReactorScreen>();
+                    List<PLEngineerAuxReactorScreen> engineeAuxScreens = new List<PLEngineerAuxReactorScreen>();
+                    List<PLUIPilotingScreen> pilotingScreens = new List<PLUIPilotingScreen>();
+                    foreach (PLUIScreen screen in __instance.MyScreenBase.AllScreens)
+                    {
+                        if (screen is PLEngineerCoolantScreen)
+                        {
+                            engineerCoolantScreens.Add(screen as PLEngineerCoolantScreen);
+                        }
+                        else if (screen is PLEngineerReactorScreen)
+                        {
+                            engineerReactorScreens.Add(screen as PLEngineerReactorScreen);
+                        }
+                        else if (screen is PLEngineerAuxReactorScreen)
+                        {
+                            engineeAuxScreens.Add(screen as PLEngineerAuxReactorScreen);
+                        }
+                        else if(screen is PLUIPilotingScreen) 
+                        {
+                            pilotingScreens.Add(screen as PLUIPilotingScreen);
+                        }
+                    }
+                    foreach (PLEngineerCoolantScreen screen in engineerCoolantScreens)
+                    {
+                        Vector3 temp = screen.FuelPanel.transform.position;
+                        screen.FuelPanel.transform.position = screen.DistressPanel.transform.position;
+                        screen.DistressPanel.transform.position = temp;
+                        temp = screen.CoolantPumpBtns[0].transform.position;
+                        screen.CoolantPumpBtns[0].transform.position = screen.CoolantPumpBtns[2].transform.position;
+                        screen.CoolantPumpBtns[2].transform.position = temp;
+                        if (!___reflection_AppliedToShipWorldUI)
+                        {
+                            for (int i = 0; i < 3; i++)
+                            {
+                                screen.CoolantPumpBtns[i].transform.localPosition += new Vector3(30f, 0f, 0f);
+                            }
+                            screen.CoolantBarOutline.transform.localPosition += new Vector3(15f, 0f, 0f);
+                            foreach (UILabel label in UnityEngine.Object.FindObjectsOfType<UILabel>())
+                            {
+                                if (label != null && label.text == PLLocalize.Localize("Coolant Reserves", false))
+                                {
+                                    label.transform.localPosition += new Vector3(15f, 0f, 0f);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            for (int i = 0; i < 3; i++)
+                            {
+                                screen.CoolantPumpBtns[i].transform.localPosition -= new Vector3(30f, 0f, 0f);
+                            }
+                            screen.CoolantBarOutline.transform.localPosition -= new Vector3(15f, 0f, 0f);
+                            foreach (UILabel label in UnityEngine.Object.FindObjectsOfType<UILabel>())
+                            {
+                                if (label != null && label.text == PLLocalize.Localize("Coolant Reserves", false))
+                                {
+                                    label.transform.localPosition -= new Vector3(15f, 0f, 0f);
+                                }
+                            }
+                        }
+                    }
+                    foreach (PLEngineerReactorScreen screen in engineerReactorScreens)
+                    {
+                        if (!___reflection_AppliedToShipWorldUI)
+                        {
+                            screen.OCBtn.transform.localPosition = new Vector3(5.5f, -20f, 0f);
+                            screen.OCBtnIcon.transform.localPosition = new Vector3(55f, -40f, 0f);
+                            screen.StabilityBarLabel.transform.localPosition += new Vector3(70f, 0f, 0f);
+                            screen.StabilityBarValueLabel.transform.localPosition += new Vector3(70f, 0f, 0f);
+                            screen.TempBarOuter.transform.localPosition += new Vector3(70f, 0f, 0f);
+                            screen.TempBarValueLabel.transform.localPosition += new Vector3(70f, 0f, 0f);
+                            screen.TempBarValueLabel_Max.transform.localPosition += new Vector3(70f, 0f, 0f);
+                            foreach (UILabel label in UnityEngine.Object.FindObjectsOfType<UILabel>())
+                            {
+                                if (label != null && label.text == PLLocalize.Localize("Engineering", false))
+                                {
+                                    label.transform.localPosition += new Vector3(490f, 0f, 0f);
+                                }
+                                else if (label != null && label.text == PLLocalize.Localize("Weapons", false))
+                                {
+                                    label.transform.localPosition += new Vector3(530f, 0f, 0f);
+                                }
+                            }
+                            screen.m_EngineerLabels[0].transform.localPosition -= new Vector3(160f, 0f, 0f);
+                            screen.m_EngineerLabels[3].transform.localPosition -= new Vector3(160f, 0f, 0f);
+                            PLUIEditableReactorEditBar engine = screen.m_EditableBar[0];
+                            engine.BarBG.transform.localPosition -= new Vector3(145f, 0f, 0f);
+                            engine.BarInnerBG.transform.localPosition -= new Vector3(145f, 0f, 0f);
+                            PLUIEditableReactorEditBar weapons = screen.m_EditableBar[3];
+                            weapons.BarBG.transform.localPosition -= new Vector3(145f, 0f, 0f);
+                            weapons.BarInnerBG.transform.localPosition -= new Vector3(145f, 0f, 0f);
+                        }
+                        else
+                        {
+                            screen.OCBtn.transform.localPosition = new Vector3(422.5f, -20f, 0f);
+                            screen.OCBtnIcon.transform.localPosition = new Vector3(435f, -40f, 0f);
+                            screen.StabilityBarLabel.transform.localPosition += new Vector3(-70f, 0f, 0f);
+                            screen.StabilityBarValueLabel.transform.localPosition += new Vector3(-70f, 0f, 0f);
+                            screen.TempBarOuter.transform.localPosition += new Vector3(-70f, 0f, 0f);
+                            screen.TempBarValueLabel.transform.localPosition += new Vector3(-70f, 0f, 0f);
+                            screen.TempBarValueLabel_Max.transform.localPosition += new Vector3(-70f, 0f, 0f);
+                            foreach (UILabel label in UnityEngine.Object.FindObjectsOfType<UILabel>())
+                            {
+                                if (label != null && label.text == PLLocalize.Localize("Engineering", false))
+                                {
+                                    label.transform.localPosition -= new Vector3(490f, 0f, 0f);
+                                }
+                                else if (label != null && label.text == PLLocalize.Localize("Weapons", false))
+                                {
+                                    label.transform.localPosition -= new Vector3(530f, 0f, 0f);
+                                }
+                            }
+                            screen.m_EngineerLabels[0].transform.localPosition += new Vector3(160f, 0f, 0f);
+                            screen.m_EngineerLabels[3].transform.localPosition += new Vector3(160f, 0f, 0f);
+                            PLUIEditableReactorEditBar engine = screen.m_EditableBar[0];
+                            engine.BarBG.transform.localPosition += new Vector3(145f, 0f, 0f);
+                            engine.BarInnerBG.transform.localPosition += new Vector3(145f, 0f, 0f);
+                            PLUIEditableReactorEditBar weapons = screen.m_EditableBar[3];
+                            weapons.BarBG.transform.localPosition += new Vector3(145f, 0f, 0f);
+                            weapons.BarInnerBG.transform.localPosition += new Vector3(145f, 0f, 0f);
+                        }
+                        FlipLocalScale(screen.OCBtnIcon.transform);
+                    }
+                    foreach (PLEngineerAuxReactorScreen screen in engineeAuxScreens)
+                    {
+                        if (!___reflection_AppliedToShipWorldUI)
+                        {
+                            foreach (UILabel label in screen.AllAuxSystemPowerLabel_On)
+                            {
+                                label.transform.localPosition -= new Vector3(330, 1, 1);
+                            }
+                            foreach (UILabel label in screen.AllAuxSystemPowerLabel_Off)
+                            {
+                                label.transform.localPosition -= new Vector3(330, 1, 1);
+                            }
+                            foreach (UILabel label in screen.AllAuxSystemPowerLabel)
+                            {
+                                label.transform.localPosition += new Vector3(170, 1, 1);
+                            }
+                            foreach (UILabel label in screen.AllAuxSystemNameLabel)
+                            {
+                                label.transform.localPosition += new Vector3(160, 1, 1);
+                            }
+                        }
+                        else
+                        {
+                            foreach (UILabel label in screen.AllAuxSystemPowerLabel_On)
+                            {
+                                label.transform.localPosition += new Vector3(330, 1, 1);
+                            }
+                            foreach (UILabel label in screen.AllAuxSystemPowerLabel_Off)
+                            {
+                                label.transform.localPosition += new Vector3(330, 1, 1);
+                            }
+                            foreach (UILabel label in screen.AllAuxSystemPowerLabel)
+                            {
+                                label.transform.localPosition -= new Vector3(170, 1, 1);
+                            }
+                            foreach (UILabel label in screen.AllAuxSystemNameLabel)
+                            {
+                                label.transform.localPosition -= new Vector3(160, 1, 1);
+                            }
+                            foreach (UILabel label in UnityEngine.Object.FindObjectsOfType<UILabel>())
+                            {
+                                if (label != null && label.text == PLLocalize.Localize("Engineering", false))
+                                {
+                                    label.transform.localPosition -= new Vector3(345f, 0f, 0f);
+                                }
+                                else if(label != null && label.text == PLLocalize.Localize("Weapons", false)) 
+                                {
+                                    label.transform.localPosition -= new Vector3(385f, 0f, 0f);
+                                }
+                            }
+                        }
+                    }
+                    foreach (PLUIPilotingScreen screen in pilotingScreens) 
+                    {
+                        if (!___reflection_AppliedToShipWorldUI) 
+                        {
+                            screen.BinaryThrust.transform.localPosition += new Vector3(253f, 0f, 0f);
+                            screen.PreciseThrust.transform.localPosition += new Vector3(253f, 0f, 0f);
+                            screen.Sectors_Enabled.transform.localPosition += new Vector3(253f, 0f, 0f);
+                            screen.Sectors_Disabled.transform.localPosition += new Vector3(253f, 0f, 0f);
+                            foreach (UILabel label in UnityEngine.Object.FindObjectsOfType<UILabel>())
+                            {
+                                if (label != null && label.text == PLLocalize.Localize("Thrust Controls", false))
+                                {
+                                    label.transform.localPosition += new Vector3(248f, 0f, 0f);
+                                }
+                                else if (label != null && label.text == PLLocalize.Localize("Show Sectors", false))
+                                {
+                                    label.transform.localPosition += new Vector3(263f, 0f, 0f);
+                                }
+                            }
+                        }
+                        else 
+                        {
+                            screen.BinaryThrust.transform.localPosition -= new Vector3(253f, 0f, 0f);
+                            screen.PreciseThrust.transform.localPosition -= new Vector3(253f, 0f, 0f);
+                            screen.Sectors_Enabled.transform.localPosition -= new Vector3(253f, 0f, 0f);
+                            screen.Sectors_Disabled.transform.localPosition -= new Vector3(253f, 0f, 0f);
+                            foreach (UILabel label in UnityEngine.Object.FindObjectsOfType<UILabel>())
+                            {
+                                if (label != null && label.text == PLLocalize.Localize("Thrust Controls", false))
+                                {
+                                    label.transform.localPosition -= new Vector3(248f, 0f, 0f);
+                                }
+                                else if (label != null && label.text == PLLocalize.Localize("Show Sectors", false))
+                                {
+                                    label.transform.localPosition -= new Vector3(263f, 0f, 0f);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            private static void FlipLocalScale(Transform targetTransform)
+            {
+                Vector3 localScale = targetTransform.localScale;
+                localScale.Scale(new Vector3(-1, 1, 1));
+                targetTransform.localScale = localScale;
+            }
+        }
+
     }
 }
