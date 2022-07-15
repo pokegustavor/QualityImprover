@@ -4,9 +4,11 @@ using System;
 using UnityEngine;
 using CodeStage.AntiCheat.ObscuredTypes;
 using UnityEngine.UI;
+using System.Reflection.Emit;
+using static PulsarModLoader.Patches.HarmonyHelpers;
 namespace QualityImprover
 {
-    internal class Patches
+    public class Patches
     {
         [HarmonyPatch(typeof(PLSpaceTarget), "TakeDamage_Location")]
         class MainTurretSpaceObjectFix
@@ -307,7 +309,7 @@ namespace QualityImprover
                         }
                     }
                 }
-                else if (__instance.ShipTypeID == EShipType.E_POLYTECH_SHIP && ___reflection_AppliedToShipWorldUI != PLServer.Instance.IsReflection_FlipIsActiveLocal)
+                else if (PLServer.Instance != null && PLServer.Instance.GameHasStarted && __instance.ShipTypeID == EShipType.E_POLYTECH_SHIP && ___reflection_AppliedToShipWorldUI != PLServer.Instance.IsReflection_FlipIsActiveLocal)
                 {
                     List<PLEngineerCoolantScreen> engineerCoolantScreens = new List<PLEngineerCoolantScreen>();
                     List<PLEngineerReactorScreen> engineerReactorScreens = new List<PLEngineerReactorScreen>();
@@ -542,6 +544,50 @@ namespace QualityImprover
                 {
                     PLEncounterManager.Instance.PlayerShip.FactionID = -1;
                 }
+            }
+        }
+        [HarmonyPatch(typeof(PLServer), "OnGameOver")]
+        class FixTimerReset 
+        {
+            private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+            {
+                List<CodeInstruction> targetSequence = new List<CodeInstruction>
+                {
+                new CodeInstruction(OpCodes.Ldarg_0),
+                new CodeInstruction(OpCodes.Ldc_R4,0f),
+                new CodeInstruction(OpCodes.Call,AccessTools.Method(typeof(ObscuredFloat),"op_Implicit",new Type[]{typeof(float)})),
+                new CodeInstruction(OpCodes.Stfld, AccessTools.Field(typeof(PLServer),"Playtime")),
+                };
+                List<CodeInstruction> patchSequence = new List<CodeInstruction>
+                {
+                };
+                return PatchBySequence(instructions, targetSequence, patchSequence, PatchMode.REPLACE, CheckMode.NONNULL, false);
+            }
+        }
+        [HarmonyPatch(typeof(PLNetworkManager), "GameOver")]
+        class FixJumpAndEnemiReset 
+        {
+            private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+            {
+                List<CodeInstruction> targetSequence = new List<CodeInstruction>
+                {
+                new CodeInstruction(OpCodes.Ldarg_0),
+                new CodeInstruction(OpCodes.Ldc_I4_0),
+                new CodeInstruction(OpCodes.Call,AccessTools.Method(typeof(ObscuredInt),"op_Implicit",new Type[]{typeof(int)})),
+                new CodeInstruction(OpCodes.Stfld, AccessTools.Field(typeof(PLNetworkManager),"NumJumps")),
+                };
+                List<CodeInstruction> patchSequence = new List<CodeInstruction>
+                {
+                };
+                IEnumerable<CodeInstruction> moded = PatchBySequence(instructions, targetSequence, patchSequence, PatchMode.REPLACE, CheckMode.NONNULL, false);
+                targetSequence = new List<CodeInstruction>
+                {
+                new CodeInstruction(OpCodes.Ldarg_0),
+                new CodeInstruction(OpCodes.Ldc_I4_0),
+                new CodeInstruction(OpCodes.Call,AccessTools.Method(typeof(ObscuredInt),"op_Implicit",new Type[]{typeof(int)})),
+                new CodeInstruction(OpCodes.Stfld, AccessTools.Field(typeof(PLNetworkManager),"NumEnemiesDestroyed")),
+                };
+                return PatchBySequence(moded, targetSequence, patchSequence, PatchMode.REPLACE, CheckMode.NONNULL, false);
             }
         }
     }
