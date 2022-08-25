@@ -590,5 +590,68 @@ namespace QualityImprover
                 return PatchBySequence(moded, targetSequence, patchSequence, PatchMode.REPLACE, CheckMode.NONNULL, false);
             }
         }
+        [HarmonyPatch(typeof(PLSylvassiCypher),"Update")]
+        class SyncedChyper 
+        {
+            static void Prefix(PLSylvassiCypher __instance) 
+            {
+                if (PLServer.Instance != null && !PhotonNetwork.isMasterClient)
+                {
+                    int sad = 0;
+                    PLRand rand = new PLRand(PLServer.Instance.GalaxySeed + PLServer.Instance.GetCurrentHubID());
+                    sad = rand.Next(0, __instance.DesignMaterials.Length);
+                    for(int i = 0; i < __instance.RingOffsets.Length; i++) 
+                    {
+                        if (i <= __instance.SetupFor_PlayerCount)
+                        {
+                            sad = rand.Next(1, 8);
+                        }
+                    }
+                    __instance.CenterCore.transform.localEulerAngles = new Vector3(__instance.CenterCore.transform.localEulerAngles.x, __instance.CenterCore.transform.localEulerAngles.y, rand.NextFloat() * 360f);
+                }
+            }
+        }
+        [HarmonyPatch(typeof(PLPawn),"Update")]
+        class HumanOxygenDamage 
+        {
+            static void Postfix(PLPawn __instance) 
+            {
+                if (__instance.MyPlayer != null && __instance.MyPlayer.OnPlanet && __instance.PawnType == EPawnType.E_CREWMAN && __instance.MyPlayer.RaceID == 0 && PLNetworkManager.Instance.LocalPlayer == __instance.MyPlayer && !__instance.ExosuitIsActive)
+                {
+                    float num8 = 3f * (1f + (float)__instance.MyPlayer.Talents[1] * 0.2f);
+                    foreach (PawnStatusEffect pawnStatusEffect4 in __instance.MyStatusEffects)
+                    {
+                        if (pawnStatusEffect4 != null && pawnStatusEffect4.Type == EPawnStatusEffectType.OXYGEN)
+                        {
+                            num8 += 4f * pawnStatusEffect4.Strength;
+                        }
+                    }
+                    bool flag2 = false;
+                    if (__instance.CurrentShip != null)
+                    {
+                        if (__instance.CurrentShip.MyStats.OxygenLevel <= 0f)
+                        {
+                            flag2 = true;
+                        }
+                    }
+                    else
+                    {
+                        AtmoSettings atmoSettings2 = __instance.GetAtmoSettings(false);
+                        if (atmoSettings2 != null && !atmoSettings2.Oxygen)
+                        {
+                            flag2 = true;
+                        }
+                    }
+                    if (flag2 && Time.time - __instance.OxygenTakeDamageTime > num8)
+                    {
+                        __instance.OxygenTakeDamageTime = Time.time;
+                        __instance.photonView.RPC("TakeOxygenDamage", PhotonTargets.All, new object[]
+                        {
+                    15f
+                        });
+                    }
+                }
+            }
+        }
     }
 }
