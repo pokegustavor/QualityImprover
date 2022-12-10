@@ -6,6 +6,8 @@ using CodeStage.AntiCheat.ObscuredTypes;
 using UnityEngine.UI;
 using System.Reflection.Emit;
 using static PulsarModLoader.Patches.HarmonyHelpers;
+using OculusSampleFramework;
+
 namespace QualityImprover
 {
     public class Patches
@@ -653,5 +655,50 @@ namespace QualityImprover
                 }
             }
         }
+        [HarmonyPatch(typeof(PLWarpFuelBoostLever), "Pull")]
+        class ClientSendFuel 
+        {
+            static bool Prefix(PLWarpFuelBoostLever __instance) 
+            {
+                __instance.LastSwitchPulledTime = Time.time;
+                __instance.ShouldBeUp = !__instance.ShouldBeUp;
+                if (PLNetworkManager.Instance.MyLocalPawn != null)
+                {
+                    PLNetworkManager.Instance.MyLocalPawn.photonView.RPC("Anim_PullLever", PhotonTargets.Others, Array.Empty<object>());
+                }
+                if (!__instance.ShouldBeUp && __instance.MyShipInfo.WarpCapsuleIsLoaded)
+                {
+                    PLServer.Instance.photonView.RPC("ServerManualProgramCharge", PhotonTargets.All, new object[]
+                    {
+                    __instance.MyShipInfo.ShipID
+                    });
+                    __instance.MyShipInfo.WarpCapsuleIsLoaded = false;
+                }
+                return false;
+            }
+        }
+        [HarmonyPatch(typeof(PLServer), "ServerManualProgramCharge")]
+        class MasterSendFuel 
+        {
+            static void Postfix(int inShipID) 
+            {
+                if (PhotonNetwork.isMasterClient) 
+                {
+                    PLServer.Instance.photonView.RPC("ServerManualProgramCharge", PhotonTargets.Others, new object[]
+                    {
+                    inShipID
+                    });
+                }
+            }
+        }
+        [HarmonyPatch(typeof(PLLiarsDiceGame), "MovePlayerToSafeSpot")]
+        class LiarsDiceFix 
+        {
+            static void Postfix() 
+            {
+                Physics.SyncTransforms();
+            }
+        }
+
     }
 }
