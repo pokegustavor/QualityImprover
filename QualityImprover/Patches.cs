@@ -7,6 +7,8 @@ using UnityEngine.UI;
 using System.Reflection.Emit;
 using static PulsarModLoader.Patches.HarmonyHelpers;
 using OculusSampleFramework;
+using System.Diagnostics;
+using static OVRLipSync;
 
 namespace QualityImprover
 {
@@ -655,42 +657,6 @@ namespace QualityImprover
                 }
             }
         }
-        [HarmonyPatch(typeof(PLWarpFuelBoostLever), "Pull")]
-        class ClientSendFuel 
-        {
-            static bool Prefix(PLWarpFuelBoostLever __instance) 
-            {
-                __instance.LastSwitchPulledTime = Time.time;
-                __instance.ShouldBeUp = !__instance.ShouldBeUp;
-                if (PLNetworkManager.Instance.MyLocalPawn != null)
-                {
-                    PLNetworkManager.Instance.MyLocalPawn.photonView.RPC("Anim_PullLever", PhotonTargets.Others, Array.Empty<object>());
-                }
-                if (!__instance.ShouldBeUp && __instance.MyShipInfo.WarpCapsuleIsLoaded)
-                {
-                    PLServer.Instance.photonView.RPC("ServerManualProgramCharge", PhotonTargets.All, new object[]
-                    {
-                    __instance.MyShipInfo.ShipID
-                    });
-                    __instance.MyShipInfo.WarpCapsuleIsLoaded = false;
-                }
-                return false;
-            }
-        }
-        [HarmonyPatch(typeof(PLServer), "ServerManualProgramCharge")]
-        class MasterSendFuel 
-        {
-            static void Postfix(int inShipID) 
-            {
-                if (PhotonNetwork.isMasterClient) 
-                {
-                    PLServer.Instance.photonView.RPC("ServerManualProgramCharge", PhotonTargets.Others, new object[]
-                    {
-                    inShipID
-                    });
-                }
-            }
-        }
         [HarmonyPatch(typeof(PLLiarsDiceGame), "MovePlayerToSafeSpot")]
         class LiarsDiceFix 
         {
@@ -699,6 +665,38 @@ namespace QualityImprover
                 Physics.SyncTransforms();
             }
         }
-
+        [HarmonyPatch(typeof(PLRacingLevelShipInfo), "SetupShipStats")]
+        class FixRacingRep 
+        {
+            static void Postfix(PLRacingLevelShipInfo __instance) 
+            {
+                __instance.NoRepLossOnKilled = true;
+            }
+        }
+        [HarmonyPatch(typeof(PLGalaxy), "GetFactionColorForID")]
+        class FixNoFactionPlayerLog 
+        {
+            static bool Prefix(PLGalaxy __instance, int inID, ref Color __result) 
+            {
+                if (inID >= __instance.FactionColors.Length)
+                {
+                    UnityEngine.Debug.Log("invalid id: GetFactionColorForID " + inID.ToString());
+                    __result = Color.white;
+                    return false;
+                }
+                if (inID == -1)
+                {
+                    __result = Color.white;
+                    return false;
+                }
+                if (inID == 4)
+                {
+                    __result = Color.Lerp(Color.red, Color.red * 0.8f, Time.time % 1f);
+                    return false;
+                }
+                __result = __instance.FactionColors[inID];
+                return false;
+            }
+        }
     }
 }
