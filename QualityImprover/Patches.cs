@@ -709,5 +709,30 @@ namespace QualityImprover
                 }
             }
         }
+        [HarmonyPatch(typeof(PLShipInfoBase), "Update")]
+        class FixReactorMeltdownAndCoolDown 
+        {
+            static void Prefix(PLShipInfoBase __instance,out PLReactor __state) 
+            {
+                __state = __instance.MyReactor;
+            }
+
+            static void Postfix(PLShipInfoBase __instance, PLReactor __state) 
+            {
+                if(__state != __instance.MyReactor && __instance.MyReactor != null && __instance.MyStats != null) 
+                {
+                    foreach(PLEnergySphere sphere in UnityEngine.Object.FindObjectsOfType<PLEnergySphere>())
+                    {
+                        if(sphere.MyOwner == __instance && !sphere.DisableSelfDetonation) 
+                        {
+                            sphere.Detonate();
+                        }
+                    }
+                    __instance.LastReactorMeltdownBeginTime = int.MinValue;
+                    __instance.ReactorOverheatTime = -99999f;
+                    __instance.MyStats.ReactorTempCurrent = 0;
+                }
+            }
+        }
     }
 }
