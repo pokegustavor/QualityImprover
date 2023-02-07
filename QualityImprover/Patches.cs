@@ -698,5 +698,16 @@ namespace QualityImprover
                 return false;
             }
         }
+        [HarmonyPatch(typeof(PLPawn),"Update")]
+        class FixOxygenOnExosuit 
+        {
+            static void Postfix(PLPawn __instance) 
+            {
+                if (__instance.MyPlayer != null && !__instance.MyPlayer.OnPlanet && __instance.CurrentShip != null && __instance.MyPlayer.RaceID == 0 && __instance.GetExosuitIsActive())
+                {
+                    __instance.CurrentShip.MyStats.OxygenLevel += Time.deltaTime * 0.002f;
+                }
+            }
+        }
     }
 }

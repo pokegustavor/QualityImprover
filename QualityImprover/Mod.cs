@@ -4,7 +4,7 @@ namespace QualityImprover
 {
     public class Mod : PulsarMod
     {
-        public override string Version => "1.6";
+        public override string Version => "1.7";
 
         public override string Author => "pokegustavo";
 
