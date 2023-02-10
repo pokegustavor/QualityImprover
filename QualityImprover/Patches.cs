@@ -14,17 +14,6 @@ namespace QualityImprover
 {
     public class Patches
     {
-        [HarmonyPatch(typeof(PLSpaceTarget), "TakeDamage_Location")]
-        class MainTurretSpaceObjectFix
-        {
-            static void Postfix(PLSpaceTarget __instance, float damage)
-            {
-                __instance.photonView.RPC("NetTakeDamage", PhotonTargets.Others, new object[]
-                    {
-                            damage
-                    });
-            }
-        }
 		[HarmonyPatch(typeof(PLShipInfoBase), "UpdateVirusSendQueue")]
 		class BetterVirusTargeting
 		{
@@ -655,14 +644,6 @@ namespace QualityImprover
                         });
                     }
                 }
-            }
-        }
-        [HarmonyPatch(typeof(PLLiarsDiceGame), "MovePlayerToSafeSpot")]
-        class LiarsDiceFix 
-        {
-            static void Postfix() 
-            {
-                Physics.SyncTransforms();
             }
         }
         [HarmonyPatch(typeof(PLRacingLevelShipInfo), "SetupShipStats")]
