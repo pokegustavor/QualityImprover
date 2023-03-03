@@ -715,5 +715,131 @@ namespace QualityImprover
                 }
             }
         }
+        class WarpGateScreenFix 
+        {
+            static UISprite NextPage;
+            static UISprite PrevPage;
+            static UILabel PageCount;
+            static int Page = 0;
+            [HarmonyPatch(typeof(PLWarpStationScreen), "SetupUI")]
+            class CreateButtons 
+            {
+                static void Postfix(PLWarpStationScreen __instance) 
+                {
+                    PrevPage = __instance.CreateButton("PrevPage", "<", new Vector3(340f, -345f), new Vector2(70f, 40f), Color.white, __instance.WarpPanel.transform, UIWidget.Pivot.TopLeft);
+                    NextPage = __instance.CreateButton("NextPage", ">", new Vector3(410f, -345f), new Vector2(70f, 40f), Color.white, __instance.WarpPanel.transform, UIWidget.Pivot.TopLeft);
+                    float num = -45f + (__instance.WarpTargetButtons.Count%7) * -42;
+                    float num2 = 20f + (__instance.WarpTargetButtons.Count/7) * 160f;
+                    List<PLSectorInfo> sectors = new List<PLSectorInfo>
+                    {
+                        PLGlobal.Instance.Galaxy.GetSectorOfVisualIndication(ESectorVisualIndication.COLONIAL_HUB),
+                        PLGlobal.Instance.Galaxy.GetSectorOfVisualIndication(ESectorVisualIndication.FLUFFY_FACTORY_01),
+                        PLGlobal.Instance.Galaxy.GetSectorOfVisualIndication(ESectorVisualIndication.FLUFFY_FACTORY_02),
+                        PLGlobal.Instance.Galaxy.GetSectorOfVisualIndication(ESectorVisualIndication.FLUFFY_FACTORY_03)
+                    };
+                    foreach (PLSectorInfo plsectorInfo in sectors)
+                    {
+                        PLWarpStationScreen.WarpTargetInfo warpTargetInfo = new PLWarpStationScreen.WarpTargetInfo();
+                        warpTargetInfo.Sector = plsectorInfo;
+                        string name = "";
+                        switch (plsectorInfo.VisualIndication) 
+                        {
+                            case ESectorVisualIndication.COLONIAL_HUB:
+                                name = "Outpost";
+                                break;
+                            case ESectorVisualIndication.FLUFFY_FACTORY_01:
+                                name = "Fluffy 1";
+                                break;
+                            case ESectorVisualIndication.FLUFFY_FACTORY_02:
+                                name = "Fluffy 2";
+                                break;
+                            case ESectorVisualIndication.FLUFFY_FACTORY_03:
+                                name = "Fluffy 3";
+                                break;
+                        }
+                        warpTargetInfo.Button = __instance.CreateButton("WTI_" + plsectorInfo.ID.ToString(), name, new Vector3(num2, num), new Vector2(140f, 40f), Color.white, __instance.WarpPanel.transform, UIWidget.Pivot.TopLeft);
+                        num -= 42f;
+                        if (num < -300f)
+                        {
+                            num2 += 160f;
+                            num = -45f;
+                        }
+                        __instance.WarpTargetButtons.Add(warpTargetInfo);
+                    }
+                    PageCount = __instance.CreateLabel("Page 1/" + ((__instance.WarpTargetButtons.Count / 21) + 1).ToString(), new Vector3(340f, -390f), 18, Color.white, __instance.WarpPanel.transform, UIWidget.Pivot.TopLeft);
+                    __instance.CancelButton.transform.position = PageCount.transform.position - new Vector3(0, 0.045f);
+                    Page = 0;
+                }
+            }
+            [HarmonyPatch(typeof(PLWarpStationScreen), "OnButtonClick")]
+            class Update 
+            {
+                static void Postfix(PLWarpStationScreen __instance, UIWidget inButton) 
+                {
+                    int maxPage = (__instance.WarpTargetButtons.Count - 1) / 21;
+                    if (__instance.MyWarpStation != null) 
+                    {
+                        
+                        if(inButton == NextPage) 
+                        {
+                            if (Page < maxPage) 
+                            {
+                                Page++;
+                                foreach (PLWarpStationScreen.WarpTargetInfo warpTargetInfo in __instance.WarpTargetButtons) 
+                                {
+                                    if (warpTargetInfo != null && warpTargetInfo.Button != null)
+                                    {
+                                        warpTargetInfo.Button.transform.position -= new Vector3(0.1563f * 3, 0);
+                                    }
+                                }
+                                //__instance.CancelButton.transform.position -= new Vector3(0.1563f * 3, 0);
+                            }
+                            else 
+                            {
+                                Page = 0;
+                                foreach (PLWarpStationScreen.WarpTargetInfo warpTargetInfo in __instance.WarpTargetButtons)
+                                {
+                                    if (warpTargetInfo != null && warpTargetInfo.Button != null)
+                                    {
+                                        warpTargetInfo.Button.transform.position += new Vector3(0.4689f * (maxPage), 0);
+                                    }
+                                }
+                                //__instance.CancelButton.transform.position += new Vector3(0.4689f * (maxPage), 0);
+                            }
+                        }
+                        else if (inButton == PrevPage)
+                        {
+                            if (Page > 0)
+                            {
+                                Page--;
+                                foreach (PLWarpStationScreen.WarpTargetInfo warpTargetInfo in __instance.WarpTargetButtons)
+                                {
+                                    if (warpTargetInfo != null && warpTargetInfo.Button != null)
+                                    {
+                                        warpTargetInfo.Button.transform.position += new Vector3(0.4689f, 0);
+                                    }
+                                }
+                                //__instance.CancelButton.transform.position += new Vector3(0.4689f, 0);
+                            }
+                            else
+                            {
+                                Page = maxPage;
+                                foreach (PLWarpStationScreen.WarpTargetInfo warpTargetInfo in __instance.WarpTargetButtons)
+                                {
+                                    if (warpTargetInfo != null && warpTargetInfo.Button != null)
+                                    {
+                                        warpTargetInfo.Button.transform.position -= new Vector3(0.4689f * (maxPage), 0);
+                                    }
+                                }
+                                //__instance.CancelButton.transform.position -= new Vector3(0.4689f * (maxPage), 0);
+                            }
+                        }
+                        PageCount.text = "Page " + (Page + 1).ToString() + "/" + (maxPage + 1).ToString();
+                    }
+                    
+                }
+            }
+        }
+
     }
 }
