@@ -840,6 +840,145 @@ namespace QualityImprover
                 }
             }
         }
+        [HarmonyPatch(typeof(PLServer), "ClaimShip")]
+        class FixShipDespawn 
+        {
+            static void Prefix(out PLShipInfo __state) 
+            {
+                __state = PLEncounterManager.Instance.PlayerShip;
+            }
 
+            static void Postfix(PLShipInfo __state) 
+            {
+                PLShipInfo plshipInfo = __state;
+                if (PhotonNetwork.isMasterClient && plshipInfo != null && plshipInfo.PersistantShipInfo != null && plshipInfo.PersistantShipInfo.ShipInstance == null)
+                {
+                    int missilecounter = 0;
+                    int nukecounter = 0;
+                    int programcounter = 0;
+                    int cpucounter = 0;
+                    int sensorcounter = 0;
+                    int thrustercounter = 0;
+                    int inertiacounter = 0;
+                    int maneuvercounter = 0;
+                    PLPersistantShipInfo persistantShipInfo = plshipInfo.PersistantShipInfo;
+                    persistantShipInfo.ShipInstance = plshipInfo;
+                    persistantShipInfo.HullPercent = plshipInfo.MyStats.HullCurrent / plshipInfo.MyStats.HullMax;
+                    persistantShipInfo.IsFlagged = plshipInfo.IsFlagged;
+                    foreach (PLShipComponent comp in plshipInfo.MyStats.AllComponents) 
+                    {
+                        if (comp is PLVirus) continue;
+                        ComponentOverrideData data = new ComponentOverrideData
+                        {
+                            CompType = (int)comp.ActualSlotType,
+                            CompSubType = comp.SubType,
+                            CompLevel = comp.Level
+                        };
+                        if (comp.SlotType == ESlotType.E_COMP_CARGO || comp.SlotType == ESlotType.E_COMP_HIDDENCARGO) 
+                        {
+                            data.IsCargo = true;
+                        }
+                        else 
+                        {
+                            data.IsCargo = false;
+                            data.ReplaceExistingComp = true;
+                            data.CompTypeToReplace = data.CompType;
+                        }
+                        switch (comp.ActualSlotType) 
+                        {
+                            case ESlotType.E_COMP_TURRET:
+                                data.SlotNumberToReplace = ((PLTurret)comp).TurretID - 1;
+                                break;
+                            case ESlotType.E_COMP_AUTO_TURRET:
+                                data.SlotNumberToReplace = ((PLAutoTurret)comp).AutoTurretID;
+                                break;
+                            case ESlotType.E_COMP_TRACKERMISSILE:
+                                data.SlotNumberToReplace = missilecounter;
+                                missilecounter++;
+                                break;
+                            case ESlotType.E_COMP_NUCLEARDEVICE:
+                                data.SlotNumberToReplace = nukecounter;
+                                nukecounter++;
+                                break;
+                            case ESlotType.E_COMP_PROGRAM:
+                                data.SlotNumberToReplace = programcounter;
+                                programcounter++;
+                                break;
+                            case ESlotType.E_COMP_CPU:
+                                data.SlotNumberToReplace = cpucounter;
+                                cpucounter++;
+                                break;
+                            case ESlotType.E_COMP_SENS:
+                                data.SlotNumberToReplace = sensorcounter;
+                                sensorcounter++;
+                                break;
+                            case ESlotType.E_COMP_THRUSTER:
+                                data.SlotNumberToReplace = thrustercounter;
+                                thrustercounter++;
+                                break;
+                            case ESlotType.E_COMP_INERTIA_THRUSTER:
+                                data.SlotNumberToReplace = inertiacounter;
+                                inertiacounter++;
+                                break;
+                            case ESlotType.E_COMP_MANEUVER_THRUSTER:
+                                data.SlotNumberToReplace = maneuvercounter;
+                                maneuvercounter++;
+                                break;
+                            default:
+                                data.SlotNumberToReplace = 0;
+                                break;
+                        }
+
+                        persistantShipInfo.CompOverrides.Add(data);
+                    }
+                    
+                }
+            }
+        }
+        class FixBossRespawn 
+        {
+            [HarmonyPatch(typeof(PLAlchemistEncounter), "PlayerEnter")]
+            class Alchemist 
+            {
+                static bool Prefix(int inHubID)
+                {
+                    PLSectorInfo sectorWithID = PLServer.GetSectorWithID(inHubID);
+                    if (sectorWithID != null)
+                    {
+                        if (!sectorWithID.Visited) return true;
+                        foreach (PLPersistantShipInfo plpersistantShipInfo in PLServer.Instance.AllPSIs)
+                        {
+                            if (plpersistantShipInfo != null && plpersistantShipInfo.MyCurrentSector == sectorWithID && plpersistantShipInfo.Type == EShipType.E_ALCHEMIST)
+                            {
+                                return true;
+                            }
+                        }
+                        return false;
+                    }
+                    return true;
+                }
+            }
+            [HarmonyPatch(typeof(PLIntrepidCommanderEncounter), "PlayerEnter")]
+            class GrimCutlass
+            {
+                static bool Prefix(int inHubID)
+                {
+                    PLSectorInfo sectorWithID = PLServer.GetSectorWithID(inHubID);
+                    if (sectorWithID != null)
+                    {
+                        if (!sectorWithID.Visited) return true;
+                        foreach (PLPersistantShipInfo plpersistantShipInfo in PLServer.Instance.AllPSIs)
+                        {
+                            if (plpersistantShipInfo != null && plpersistantShipInfo.MyCurrentSector == sectorWithID && plpersistantShipInfo.Type == EShipType.E_INTREPID_SC)
+                            {
+                                return true;
+                            }
+                        }
+                        return false;
+                    }
+                    return true;
+                }
+            }
+        }
     }
 }
