@@ -980,5 +980,14 @@ namespace QualityImprover
                 }
             }
         }
+        [HarmonyPatch(typeof(PLShipInfoBase), "OnWarp")]
+        class FixBountySpawner 
+        {
+            static void Postfix() 
+            {
+                UnityEngine.Object.Destroy(PLServer.Instance.MyHunterSpawner);
+                PLServer.Instance.MyHunterSpawner = null;
+            }
+        }
     }
 }
