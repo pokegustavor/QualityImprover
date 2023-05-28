@@ -9,6 +9,7 @@ using static PulsarModLoader.Patches.HarmonyHelpers;
 using OculusSampleFramework;
 using System.Diagnostics;
 using static OVRLipSync;
+using System.ComponentModel;
 
 namespace QualityImprover
 {
@@ -865,6 +866,10 @@ namespace QualityImprover
                     persistantShipInfo.ShipInstance = plshipInfo;
                     persistantShipInfo.HullPercent = plshipInfo.MyStats.HullCurrent / plshipInfo.MyStats.HullMax;
                     persistantShipInfo.IsFlagged = plshipInfo.IsFlagged;
+                    if (!persistantShipInfo.ShipName.Contains("(Saved)")) 
+                    {
+                        persistantShipInfo.ShipName += "(Saved)";
+                    }
                     foreach (PLShipComponent comp in plshipInfo.MyStats.AllComponents) 
                     {
                         if (comp is PLVirus) continue;
@@ -977,6 +982,56 @@ namespace QualityImprover
                         return false;
                     }
                     return true;
+                }
+            }
+        }
+        [HarmonyPatch(typeof(PLPersistantEncounterInstance), "SpawnEnemyShip")]
+        class FixChaosLevUp 
+        {
+            static void Postfix(PLPersistantShipInfo inPSI) 
+            {
+                if (inPSI.ShipName.Contains("(Saved)") && inPSI.ShipInstance != null)
+                {
+                    inPSI.ShipInstance.ShipNameValue = inPSI.ShipInstance.ShipNameValue.Remove(inPSI.ShipInstance.ShipNameValue.IndexOf("(Saved)"), 7);
+                    List<PLShipComponent> compToDie = new List<PLShipComponent>();
+                    compToDie.AddRange(inPSI.ShipInstance.MyStats.AllComponents);
+                    foreach(PLShipComponent comp in compToDie) 
+                    {
+                        inPSI.ShipInstance.MyStats.RemoveShipComponent(comp);
+                    }
+                    foreach (ComponentOverrideData componentOverrideData2 in inPSI.CompOverrides)
+                    {
+                        inPSI.ShipInstance.MyStats.AddShipComponent(PLShipComponent.CreateShipComponentFromHash((int)PLShipComponent.createHashFromInfo(componentOverrideData2.CompType, componentOverrideData2.CompSubType, componentOverrideData2.CompLevel, 0, componentOverrideData2.IsCargo ? 12 : componentOverrideData2.CompType), null), -1, (ESlotType)(componentOverrideData2.IsCargo ? 12 : componentOverrideData2.CompType));
+                    }
+                }
+            }
+        }
+        [HarmonyPatch(typeof(PLPlayer), "AttemptToTransferNeutralCargo")]
+        class FixCargoDup 
+        {
+            static void Prefix(int inCurrentShipID, int inNetID) 
+            {
+                if (PLEncounterManager.Instance != null)
+                {
+                    PLShipInfo plshipInfo = PLEncounterManager.Instance.GetShipFromID(inCurrentShipID) as PLShipInfo;
+                    if (plshipInfo != null)
+                    {
+                        PLShipComponent componentFromNetID = plshipInfo.MyStats.GetComponentFromNetID(inNetID);
+                        if (componentFromNetID != null)
+                        {
+                            if(plshipInfo.PersistantShipInfo != null)
+                            {
+                                foreach(ComponentOverrideData data in plshipInfo.PersistantShipInfo.CompOverrides) 
+                                {
+                                    if(data.IsCargo && data.CompSubType == componentFromNetID.SubType && data.CompType == (int)componentFromNetID.ActualSlotType && data.CompLevel == componentFromNetID.Level) 
+                                    {
+                                        plshipInfo.PersistantShipInfo.CompOverrides.Remove(data);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
