@@ -1035,7 +1035,7 @@ namespace QualityImprover
                 }
             }
         }
-        [HarmonyPatch(typeof(PLShipInfoBase), "OnWarp")]
+        [HarmonyPatch(typeof(PLShipInfoBase), "BeginWarp")]
         class FixBountySpawner 
         {
             static void Postfix() 
