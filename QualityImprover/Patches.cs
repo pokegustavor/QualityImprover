@@ -990,7 +990,7 @@ namespace QualityImprover
         {
             static void Postfix(PLPersistantShipInfo inPSI) 
             {
-                if (inPSI.ShipName.Contains("(Saved)") && inPSI.ShipInstance != null)
+                if (PLEncounterManager.Instance.GetCPEI().LevelID != 136 && inPSI.ShipName.Contains("(Saved)") && inPSI.ShipInstance != null)
                 {
                     inPSI.ShipInstance.ShipNameValue = inPSI.ShipInstance.ShipNameValue.Remove(inPSI.ShipInstance.ShipNameValue.IndexOf("(Saved)"), 7);
                     List<PLShipComponent> compToDie = new List<PLShipComponent>();
