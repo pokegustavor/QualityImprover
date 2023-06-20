@@ -15,110 +15,110 @@ namespace QualityImprover
 {
     public class Patches
     {
-		[HarmonyPatch(typeof(PLShipInfoBase), "UpdateVirusSendQueue")]
-		class BetterVirusTargeting
-		{
-			static bool Prefix(PLShipInfoBase __instance)
-			{
-				if (PLServer.Instance != null)
-				{
-					List<int> list = new List<int>();
-					foreach (int num in __instance.VirusSendQueue.ReverseDictionary.Values)
-					{
-						PLVirus plvirus = __instance.VirusSendQueue.Forward[num];
-						if (plvirus != null && PLServer.Instance.GetEstimatedServerMs() - plvirus.InitialTime > plvirus.TimeLimitMs)
-						{
-							list.Add(num);
-						}
-					}
-					foreach (int t in list)
-					{
-						__instance.VirusSendQueue.Remove(t);
-					}
-					list.Clear();
-					if (PLServer.Instance != null)
-					{
-						int num2 = 3000;
-						num2 = UnityEngine.Mathf.RoundToInt((float)num2 / (1f + __instance.MyStats.CyberAttackRating));
-						bool flag = !PLGlobal.WithinTimeLimit(PLServer.Instance.GetEstimatedServerMs(), __instance.LastVirusSendQueueTime, num2);
-						if (__instance.VirusSendQueue.ForwardDictionary.Values.Count > 0 && PLEncounterManager.Instance.GetCPEI() != null)
-						{
-							foreach (PLShipInfoBase plshipInfoBase in PLEncounterManager.Instance.AllShips.Values)
-							{
-								if (plshipInfoBase != null && plshipInfoBase != __instance && plshipInfoBase.MySensorObjectShip != null && plshipInfoBase.MySensorObjectShip.IsDetectedBy(__instance) && !plshipInfoBase.IsInfected && (__instance.ShouldBeHostileToShip(plshipInfoBase, false, true, true) || __instance.TargetShip == plshipInfoBase))
-								{
-									foreach (int num3 in __instance.VirusSendQueue.ForwardDictionary.Keys)
-									{
-										PLVirus plvirus2 = __instance.VirusSendQueue.Forward[num3];
-										if (!plvirus2.InfectionCompletedOnShips.Contains(plshipInfoBase.ShipID) && (flag || !plvirus2.InitialSendDone || (plshipInfoBase.MyStats != null && plshipInfoBase.MyStats.CyberDefenseRating == 0f)) && PhotonNetwork.isMasterClient)
-										{
-											if (plshipInfoBase.VirusAttemptSuccessful(plvirus2))
-											{
-												if (plvirus2.NetID == -1)
-												{
-													plvirus2.NetID = PLShipInfoBase.ComponentIDCounter++;
-												}
-												PLServer.Instance.photonView.RPC("VirusSuccess", PhotonTargets.All, new object[]
-												{
-												__instance.ShipID,
-												plshipInfoBase.ShipID,
-												num3,
-												plvirus2.NetID
-												});
-											}
-											else
-											{
-												if (!plvirus2.AttemptCounterMap.ContainsKey(plshipInfoBase.ShipID))
-												{
-													plvirus2.AttemptCounterMap.Add(plshipInfoBase.ShipID, 1);
-												}
-												else
-												{
-													plvirus2.AttemptCounterMap[plshipInfoBase.ShipID] = plvirus2.AttemptCounterMap[plshipInfoBase.ShipID] + 1;
-												}
-												PLServer.Instance.photonView.RPC("VirusBroadcastAttempt", PhotonTargets.Others, new object[]
-												{
-											__instance.ShipID,
-											plshipInfoBase.ShipID,
-											__instance.VirusSendQueue.Reverse[plvirus2],
-											plvirus2.AttemptCounterMap[plshipInfoBase.ShipID],
-											__instance.LastVirusSendQueueTime
-												});
-											}
-										}
-									}
-								}
-							}
-							foreach (PLVirus plvirus3 in __instance.VirusSendQueue.ForwardDictionary.Values)
-							{
-								if (plvirus3 != null)
-								{
-									plvirus3.InitialSendDone = true;
-								}
-							}
-							if (flag)
-							{
-								__instance.LastVirusSendQueueTime = PLServer.Instance.GetEstimatedServerMs();
-							}
-						}
-					}
-				}
-				return false;
-			}
-		}
-		[HarmonyPatch(typeof(PLShipStats), "AddShipComponent")]
-		class VirusBugFix 
-		{
-			static bool Prefix(PLShipStats __instance, PLShipComponent inComponent, ESlotType visualSlot) 
-			{
-				if(visualSlot == ESlotType.E_COMP_VIRUS) 
-				{
-					PLSlot slot = __instance.GetSlot(visualSlot);
-					if (slot.Contains(inComponent)) return false;
-				}
-				return true;
-			}
-		}
+        [HarmonyPatch(typeof(PLShipInfoBase), "UpdateVirusSendQueue")]
+        class BetterVirusTargeting
+        {
+            static bool Prefix(PLShipInfoBase __instance)
+            {
+                if (PLServer.Instance != null)
+                {
+                    List<int> list = new List<int>();
+                    foreach (int num in __instance.VirusSendQueue.ReverseDictionary.Values)
+                    {
+                        PLVirus plvirus = __instance.VirusSendQueue.Forward[num];
+                        if (plvirus != null && PLServer.Instance.GetEstimatedServerMs() - plvirus.InitialTime > plvirus.TimeLimitMs)
+                        {
+                            list.Add(num);
+                        }
+                    }
+                    foreach (int t in list)
+                    {
+                        __instance.VirusSendQueue.Remove(t);
+                    }
+                    list.Clear();
+                    if (PLServer.Instance != null)
+                    {
+                        int num2 = 3000;
+                        num2 = UnityEngine.Mathf.RoundToInt((float)num2 / (1f + __instance.MyStats.CyberAttackRating));
+                        bool flag = !PLGlobal.WithinTimeLimit(PLServer.Instance.GetEstimatedServerMs(), __instance.LastVirusSendQueueTime, num2);
+                        if (__instance.VirusSendQueue.ForwardDictionary.Values.Count > 0 && PLEncounterManager.Instance.GetCPEI() != null)
+                        {
+                            foreach (PLShipInfoBase plshipInfoBase in PLEncounterManager.Instance.AllShips.Values)
+                            {
+                                if (plshipInfoBase != null && plshipInfoBase != __instance && plshipInfoBase.MySensorObjectShip != null && plshipInfoBase.MySensorObjectShip.IsDetectedBy(__instance) && !plshipInfoBase.IsInfected && (__instance.ShouldBeHostileToShip(plshipInfoBase, false, true, true) || __instance.TargetShip == plshipInfoBase))
+                                {
+                                    foreach (int num3 in __instance.VirusSendQueue.ForwardDictionary.Keys)
+                                    {
+                                        PLVirus plvirus2 = __instance.VirusSendQueue.Forward[num3];
+                                        if (!plvirus2.InfectionCompletedOnShips.Contains(plshipInfoBase.ShipID) && (flag || !plvirus2.InitialSendDone || (plshipInfoBase.MyStats != null && plshipInfoBase.MyStats.CyberDefenseRating == 0f)) && PhotonNetwork.isMasterClient)
+                                        {
+                                            if (plshipInfoBase.VirusAttemptSuccessful(plvirus2))
+                                            {
+                                                if (plvirus2.NetID == -1)
+                                                {
+                                                    plvirus2.NetID = PLShipInfoBase.ComponentIDCounter++;
+                                                }
+                                                PLServer.Instance.photonView.RPC("VirusSuccess", PhotonTargets.All, new object[]
+                                                {
+                                                __instance.ShipID,
+                                                plshipInfoBase.ShipID,
+                                                num3,
+                                                plvirus2.NetID
+                                                });
+                                            }
+                                            else
+                                            {
+                                                if (!plvirus2.AttemptCounterMap.ContainsKey(plshipInfoBase.ShipID))
+                                                {
+                                                    plvirus2.AttemptCounterMap.Add(plshipInfoBase.ShipID, 1);
+                                                }
+                                                else
+                                                {
+                                                    plvirus2.AttemptCounterMap[plshipInfoBase.ShipID] = plvirus2.AttemptCounterMap[plshipInfoBase.ShipID] + 1;
+                                                }
+                                                PLServer.Instance.photonView.RPC("VirusBroadcastAttempt", PhotonTargets.Others, new object[]
+                                                {
+                                            __instance.ShipID,
+                                            plshipInfoBase.ShipID,
+                                            __instance.VirusSendQueue.Reverse[plvirus2],
+                                            plvirus2.AttemptCounterMap[plshipInfoBase.ShipID],
+                                            __instance.LastVirusSendQueueTime
+                                                });
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            foreach (PLVirus plvirus3 in __instance.VirusSendQueue.ForwardDictionary.Values)
+                            {
+                                if (plvirus3 != null)
+                                {
+                                    plvirus3.InitialSendDone = true;
+                                }
+                            }
+                            if (flag)
+                            {
+                                __instance.LastVirusSendQueueTime = PLServer.Instance.GetEstimatedServerMs();
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+        }
+        [HarmonyPatch(typeof(PLShipStats), "AddShipComponent")]
+        class VirusBugFix
+        {
+            static bool Prefix(PLShipStats __instance, PLShipComponent inComponent, ESlotType visualSlot)
+            {
+                if (visualSlot == ESlotType.E_COMP_VIRUS)
+                {
+                    PLSlot slot = __instance.GetSlot(visualSlot);
+                    if (slot.Contains(inComponent)) return false;
+                }
+                return true;
+            }
+        }
         [HarmonyPatch(typeof(PLLiarsDiceGame), "AI_TakeTurns")]
         class LiarsDiceAI
         {
@@ -219,12 +219,12 @@ namespace QualityImprover
             }
         }
         [HarmonyPatch(typeof(PLShipInfo), "RevealCrewRepClicked")]
-        class RevealComms 
+        class RevealComms
         {
-            static bool Prefix(PLShipInfo __instance, PhotonMessageInfo pmi) 
+            static bool Prefix(PLShipInfo __instance, PhotonMessageInfo pmi)
             {
                 PLServer.Instance.IsCrewRepRevealed = true;
-                for(int i = 0; i <= 5; i++) 
+                for (int i = 0; i <= 5; i++)
                 {
                     if (PLServer.Instance.RepLevels[i] * 0.05f > UnityEngine.Random.value)
                     {
@@ -232,7 +232,7 @@ namespace QualityImprover
                         {
                             if (plshipInfoBase != null && plshipInfoBase != __instance && plshipInfoBase.FactionID == i && plshipInfoBase.HostileShips.Contains(__instance.ShipID))
                             {
-                                if(plshipInfoBase.TargetShip == __instance) 
+                                if (plshipInfoBase.TargetShip == __instance)
                                 {
                                     plshipInfoBase.TargetShip = null;
                                     plshipInfoBase.TargetShip_ForAI = null;
@@ -266,18 +266,18 @@ namespace QualityImprover
             }
         }
         [HarmonyPatch(typeof(PLShipInfoBase), "ShouldBeHostileToShip")]
-        class HostilityCode 
+        class HostilityCode
         {
-            static bool Prefix(PLShipInfo __instance,ref bool __result, PLShipInfoBase inShip) 
+            static bool Prefix(PLShipInfo __instance, ref bool __result, PLShipInfoBase inShip)
             {
-                if (inShip != null && !__instance.HostileShips.Contains(inShip.ShipID)) 
+                if (inShip != null && !__instance.HostileShips.Contains(inShip.ShipID))
                 {
                     if (inShip.GetIsPlayerShip() && PLServer.Instance.IsCrewRepRevealed && __instance.FactionID != 6 && __instance.FactionID != -1 && PLServer.Instance.RepLevels[__instance.FactionID] > 0 && __instance.ShipTypeID != EShipType.E_BEACON && !__instance.HasModifier(EShipModifierType.CORRUPTED))
                     {
                         __result = false;
                         return false;
                     }
-                    else if (__instance.GetIsPlayerShip() && inShip.ShipTypeID != EShipType.E_BEACON && inShip.FactionID != 6 && inShip.FactionID != -1 && PLServer.Instance.RepLevels[inShip.FactionID] > 0 && inShip.HasModifier(EShipModifierType.CORRUPTED)) 
+                    else if (__instance.GetIsPlayerShip() && inShip.ShipTypeID != EShipType.E_BEACON && inShip.FactionID != 6 && inShip.FactionID != -1 && PLServer.Instance.RepLevels[inShip.FactionID] > 0 && inShip.HasModifier(EShipModifierType.CORRUPTED))
                     {
                         __result = false;
                         return false;
@@ -286,10 +286,10 @@ namespace QualityImprover
                 return true;
             }
         }
-        [HarmonyPatch(typeof(PLShipInfo),"Update")]
-        class ReflectWDPTFix 
+        [HarmonyPatch(typeof(PLShipInfo), "Update")]
+        class ReflectWDPTFix
         {
-            static void Prefix(PLShipInfo __instance, ref List<GameObject> ___SysInstUIRoots, ref bool ___reflection_AppliedToShipWorldUI, ref Image ___DialogueChoiceBG, ref Image ___DialogueTextBG) 
+            static void Prefix(PLShipInfo __instance, ref List<GameObject> ___SysInstUIRoots, ref bool ___reflection_AppliedToShipWorldUI, ref Image ___DialogueChoiceBG, ref Image ___DialogueTextBG)
             {
                 if ((__instance.ShipTypeID == EShipType.E_WDCRUISER || __instance.ShipTypeID == EShipType.E_DESTROYER) && PLServer.Instance != null && ___DialogueChoiceBG != null && ___DialogueTextBG != null && ___SysInstUIRoots != null && ___SysInstUIRoots.Count > 0 && ___reflection_AppliedToShipWorldUI != PLServer.Instance.IsReflection_FlipIsActiveLocal)
                 {
@@ -323,7 +323,7 @@ namespace QualityImprover
                         {
                             engineeAuxScreens.Add(screen as PLEngineerAuxReactorScreen);
                         }
-                        else if(screen is PLUIPilotingScreen) 
+                        else if (screen is PLUIPilotingScreen)
                         {
                             pilotingScreens.Add(screen as PLUIPilotingScreen);
                         }
@@ -474,16 +474,16 @@ namespace QualityImprover
                                 {
                                     label.transform.localPosition -= new Vector3(345f, 0f, 0f);
                                 }
-                                else if(label != null && label.text == PLLocalize.Localize("Weapons", false)) 
+                                else if (label != null && label.text == PLLocalize.Localize("Weapons", false))
                                 {
                                     label.transform.localPosition -= new Vector3(385f, 0f, 0f);
                                 }
                             }
                         }
                     }
-                    foreach (PLUIPilotingScreen screen in pilotingScreens) 
+                    foreach (PLUIPilotingScreen screen in pilotingScreens)
                     {
-                        if (!___reflection_AppliedToShipWorldUI) 
+                        if (!___reflection_AppliedToShipWorldUI)
                         {
                             screen.BinaryThrust.transform.localPosition += new Vector3(253f, 0f, 0f);
                             screen.PreciseThrust.transform.localPosition += new Vector3(253f, 0f, 0f);
@@ -501,7 +501,7 @@ namespace QualityImprover
                                 }
                             }
                         }
-                        else 
+                        else
                         {
                             screen.BinaryThrust.transform.localPosition -= new Vector3(253f, 0f, 0f);
                             screen.PreciseThrust.transform.localPosition -= new Vector3(253f, 0f, 0f);
@@ -530,9 +530,9 @@ namespace QualityImprover
             }
         }
         [HarmonyPatch(typeof(PLServer), "SpawnPlayerShip")]
-        class NoAOGStart 
+        class NoAOGStart
         {
-            static void Postfix(PLServer __instance) 
+            static void Postfix(PLServer __instance)
             {
                 if (PLEncounterManager.Instance.PlayerShip.ShipTypeID == EShipType.E_CIVILIAN_STARTING_SHIP || PLEncounterManager.Instance.PlayerShip.ShipTypeID == EShipType.OLDWARS_HUMAN)
                 {
@@ -541,7 +541,7 @@ namespace QualityImprover
             }
         }
         [HarmonyPatch(typeof(PLServer), "OnGameOver")]
-        class FixTimerReset 
+        class FixTimerReset
         {
             private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
             {
@@ -559,7 +559,7 @@ namespace QualityImprover
             }
         }
         [HarmonyPatch(typeof(PLNetworkManager), "GameOver")]
-        class FixJumpAndEnemiReset 
+        class FixJumpAndEnemiReset
         {
             private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
             {
@@ -584,17 +584,17 @@ namespace QualityImprover
                 return PatchBySequence(moded, targetSequence, patchSequence, PatchMode.REPLACE, CheckMode.NONNULL, false);
             }
         }
-        [HarmonyPatch(typeof(PLSylvassiCypher),"Update")]
-        class SyncedChyper 
+        [HarmonyPatch(typeof(PLSylvassiCypher), "Update")]
+        class SyncedChyper
         {
-            static void Prefix(PLSylvassiCypher __instance) 
+            static void Prefix(PLSylvassiCypher __instance)
             {
                 if (PLServer.Instance != null && !PhotonNetwork.isMasterClient)
                 {
                     int sad = 0;
                     PLRand rand = new PLRand(PLServer.Instance.GalaxySeed + PLServer.Instance.GetCurrentHubID());
                     sad = rand.Next(0, __instance.DesignMaterials.Length);
-                    for(int i = 0; i < __instance.RingOffsets.Length; i++) 
+                    for (int i = 0; i < __instance.RingOffsets.Length; i++)
                     {
                         if (i <= __instance.SetupFor_PlayerCount)
                         {
@@ -605,10 +605,10 @@ namespace QualityImprover
                 }
             }
         }
-        [HarmonyPatch(typeof(PLPawn),"Update")]
-        class HumanOxygenDamage 
+        [HarmonyPatch(typeof(PLPawn), "Update")]
+        class HumanOxygenDamage
         {
-            static void Postfix(PLPawn __instance) 
+            static void Postfix(PLPawn __instance)
             {
                 if (__instance.MyPlayer != null && __instance.MyPlayer.OnPlanet && __instance.PawnType == EPawnType.E_CREWMAN && __instance.MyPlayer.RaceID == 0 && PLNetworkManager.Instance.LocalPlayer == __instance.MyPlayer && !__instance.ExosuitIsActive)
                 {
@@ -648,17 +648,17 @@ namespace QualityImprover
             }
         }
         [HarmonyPatch(typeof(PLRacingLevelShipInfo), "SetupShipStats")]
-        class FixRacingRep 
+        class FixRacingRep
         {
-            static void Postfix(PLRacingLevelShipInfo __instance) 
+            static void Postfix(PLRacingLevelShipInfo __instance)
             {
                 __instance.NoRepLossOnKilled = true;
             }
         }
         [HarmonyPatch(typeof(PLGalaxy), "GetFactionColorForID")]
-        class FixNoFactionPlayerLog 
+        class FixNoFactionPlayerLog
         {
-            static bool Prefix(PLGalaxy __instance, int inID, ref Color __result) 
+            static bool Prefix(PLGalaxy __instance, int inID, ref Color __result)
             {
                 if (inID >= __instance.FactionColors.Length)
                 {
@@ -680,10 +680,10 @@ namespace QualityImprover
                 return false;
             }
         }
-        [HarmonyPatch(typeof(PLPawn),"Update")]
-        class FixOxygenOnExosuit 
+        [HarmonyPatch(typeof(PLPawn), "Update")]
+        class FixOxygenOnExosuit
         {
-            static void Postfix(PLPawn __instance) 
+            static void Postfix(PLPawn __instance)
             {
                 if (__instance.MyPlayer != null && !__instance.MyPlayer.OnPlanet && __instance.CurrentShip != null && __instance.MyPlayer.RaceID == 0 && __instance.GetExosuitIsActive())
                 {
@@ -691,46 +691,38 @@ namespace QualityImprover
                 }
             }
         }
-        [HarmonyPatch(typeof(PLShipInfoBase), "Update")]
-        class FixReactorMeltdownAndCoolDown 
+        [HarmonyPatch(typeof(PLReactor), "Equip")]
+        class FixReactorMeltdownAndCoolDown
         {
-            static void Prefix(PLShipInfoBase __instance,out PLReactor __state) 
+            static void Prefix(PLReactor __instance)
             {
-                __state = __instance.MyReactor;
-            }
-
-            static void Postfix(PLShipInfoBase __instance, PLReactor __state) 
-            {
-                if(__state != __instance.MyReactor && __instance.MyReactor != null && __instance.MyStats != null) 
+                foreach (PLEnergySphere sphere in UnityEngine.Object.FindObjectsOfType<PLEnergySphere>())
                 {
-                    foreach(PLEnergySphere sphere in UnityEngine.Object.FindObjectsOfType<PLEnergySphere>())
+                    if (sphere.MyOwner == __instance.ShipStats.Ship && !sphere.DisableSelfDetonation)
                     {
-                        if(sphere.MyOwner == __instance && !sphere.DisableSelfDetonation) 
-                        {
-                            sphere.Detonate();
-                        }
+                        sphere.Detonate();
                     }
-                    __instance.LastReactorMeltdownBeginTime = int.MinValue;
-                    __instance.ReactorOverheatTime = -99999f;
-                    __instance.MyStats.ReactorTempCurrent = 0;
                 }
+                __instance.ShipStats.Ship.LastReactorMeltdownBeginTime = int.MinValue;
+                __instance.ShipStats.Ship.ReactorOverheatTime = -99999f;
+                __instance.ShipStats.Ship.CoreInstability = 0;
             }
         }
-        class WarpGateScreenFix 
+        class WarpGateScreenFix
         {
             static UISprite NextPage;
             static UISprite PrevPage;
             static UILabel PageCount;
             static int Page = 0;
             [HarmonyPatch(typeof(PLWarpStationScreen), "SetupUI")]
-            class CreateButtons 
+            class CreateButtons
             {
-                static void Postfix(PLWarpStationScreen __instance) 
+                static void Postfix(PLWarpStationScreen __instance)
                 {
                     PrevPage = __instance.CreateButton("PrevPage", "<", new Vector3(340f, -345f), new Vector2(70f, 40f), Color.white, __instance.WarpPanel.transform, UIWidget.Pivot.TopLeft);
                     NextPage = __instance.CreateButton("NextPage", ">", new Vector3(410f, -345f), new Vector2(70f, 40f), Color.white, __instance.WarpPanel.transform, UIWidget.Pivot.TopLeft);
-                    float num = -45f + (__instance.WarpTargetButtons.Count%7) * -42;
-                    float num2 = 20f + (__instance.WarpTargetButtons.Count/7) * 160f;
+                    float num = -45f + (__instance.WarpTargetButtons.Count % 7) * -42;
+                    float num2 = 20f + (__instance.WarpTargetButtons.Count / 7) * 160f;
                     List<PLSectorInfo> sectors = new List<PLSectorInfo>
                     {
                         PLGlobal.Instance.Galaxy.GetSectorOfVisualIndication(ESectorVisualIndication.COLONIAL_HUB),
@@ -743,7 +735,7 @@ namespace QualityImprover
                         PLWarpStationScreen.WarpTargetInfo warpTargetInfo = new PLWarpStationScreen.WarpTargetInfo();
                         warpTargetInfo.Sector = plsectorInfo;
                         string name = "";
-                        switch (plsectorInfo.VisualIndication) 
+                        switch (plsectorInfo.VisualIndication)
                         {
                             case ESectorVisualIndication.COLONIAL_HUB:
                                 name = "Outpost";
@@ -773,20 +765,20 @@ namespace QualityImprover
                 }
             }
             [HarmonyPatch(typeof(PLWarpStationScreen), "OnButtonClick")]
-            class Update 
+            class Update
             {
-                static void Postfix(PLWarpStationScreen __instance, UIWidget inButton) 
+                static void Postfix(PLWarpStationScreen __instance, UIWidget inButton)
                 {
                     int maxPage = (__instance.WarpTargetButtons.Count - 1) / 21;
-                    if (__instance.MyWarpStation != null) 
+                    if (__instance.MyWarpStation != null)
                     {
-                        
-                        if(inButton == NextPage) 
+
+                        if (inButton == NextPage)
                         {
-                            if (Page < maxPage) 
+                            if (Page < maxPage)
                             {
                                 Page++;
-                                foreach (PLWarpStationScreen.WarpTargetInfo warpTargetInfo in __instance.WarpTargetButtons) 
+                                foreach (PLWarpStationScreen.WarpTargetInfo warpTargetInfo in __instance.WarpTargetButtons)
                                 {
                                     if (warpTargetInfo != null && warpTargetInfo.Button != null)
                                     {
@@ -795,7 +787,7 @@ namespace QualityImprover
                                 }
                                 //__instance.CancelButton.transform.position -= new Vector3(0.1563f * 3, 0);
                             }
-                            else 
+                            else
                             {
                                 Page = 0;
                                 foreach (PLWarpStationScreen.WarpTargetInfo warpTargetInfo in __instance.WarpTargetButtons)
@@ -837,19 +829,19 @@ namespace QualityImprover
                         }
                         PageCount.text = "Page " + (Page + 1).ToString() + "/" + (maxPage + 1).ToString();
                     }
-                    
+
                 }
             }
         }
         [HarmonyPatch(typeof(PLServer), "ClaimShip")]
-        class FixShipDespawn 
+        class FixShipDespawn
         {
-            static void Prefix(out PLShipInfo __state) 
+            static void Prefix(out PLShipInfo __state)
             {
                 __state = PLEncounterManager.Instance.PlayerShip;
             }
 
-            static void Postfix(PLShipInfo __state) 
+            static void Postfix(PLShipInfo __state)
             {
                 PLShipInfo plshipInfo = __state;
                 if (PhotonNetwork.isMasterClient && plshipInfo != null && plshipInfo.PersistantShipInfo != null && plshipInfo.PersistantShipInfo.ShipInstance == null)
@@ -866,11 +858,11 @@ namespace QualityImprover
                     persistantShipInfo.ShipInstance = plshipInfo;
                     persistantShipInfo.HullPercent = plshipInfo.MyStats.HullCurrent / plshipInfo.MyStats.HullMax;
                     persistantShipInfo.IsFlagged = plshipInfo.IsFlagged;
-                    if (!persistantShipInfo.ShipName.Contains("(Saved)")) 
+                    if (!persistantShipInfo.ShipName.Contains("(Saved)"))
                     {
                         persistantShipInfo.ShipName += "(Saved)";
                     }
-                    foreach (PLShipComponent comp in plshipInfo.MyStats.AllComponents) 
+                    foreach (PLShipComponent comp in plshipInfo.MyStats.AllComponents)
                     {
                         if (comp is PLVirus) continue;
                         ComponentOverrideData data = new ComponentOverrideData
@@ -879,17 +871,17 @@ namespace QualityImprover
                             CompSubType = comp.SubType,
                             CompLevel = comp.Level
                         };
-                        if (comp.SlotType == ESlotType.E_COMP_CARGO || comp.SlotType == ESlotType.E_COMP_HIDDENCARGO) 
+                        if (comp.SlotType == ESlotType.E_COMP_CARGO || comp.SlotType == ESlotType.E_COMP_HIDDENCARGO)
                         {
                             data.IsCargo = true;
                         }
-                        else 
+                        else
                         {
                             data.IsCargo = false;
                             data.ReplaceExistingComp = true;
                             data.CompTypeToReplace = data.CompType;
                         }
-                        switch (comp.ActualSlotType) 
+                        switch (comp.ActualSlotType)
                         {
                             case ESlotType.E_COMP_TURRET:
                                 data.SlotNumberToReplace = ((PLTurret)comp).TurretID - 1;
@@ -936,14 +928,14 @@ namespace QualityImprover
 
                         persistantShipInfo.CompOverrides.Add(data);
                     }
-                    
+
                 }
             }
         }
-        class FixBossRespawn 
+        class FixBossRespawn
         {
             [HarmonyPatch(typeof(PLAlchemistEncounter), "PlayerEnter")]
-            class Alchemist 
+            class Alchemist
             {
                 static bool Prefix(int inHubID)
                 {
@@ -986,16 +978,16 @@ namespace QualityImprover
             }
         }
         [HarmonyPatch(typeof(PLPersistantEncounterInstance), "SpawnEnemyShip")]
-        class FixChaosLevUp 
+        class FixChaosLevUp
         {
-            static void Postfix(PLPersistantShipInfo inPSI) 
+            static void Postfix(PLPersistantShipInfo inPSI)
             {
                 if (PLEncounterManager.Instance.GetCPEI().LevelID != 136 && inPSI.ShipName.Contains("(Saved)") && inPSI.ShipInstance != null)
                 {
                     inPSI.ShipInstance.ShipNameValue = inPSI.ShipInstance.ShipNameValue.Remove(inPSI.ShipInstance.ShipNameValue.IndexOf("(Saved)"), 7);
                     List<PLShipComponent> compToDie = new List<PLShipComponent>();
                     compToDie.AddRange(inPSI.ShipInstance.MyStats.AllComponents);
-                    foreach(PLShipComponent comp in compToDie) 
+                    foreach (PLShipComponent comp in compToDie)
                     {
                         inPSI.ShipInstance.MyStats.RemoveShipComponent(comp);
                     }
@@ -1007,9 +999,9 @@ namespace QualityImprover
             }
         }
         [HarmonyPatch(typeof(PLPlayer), "AttemptToTransferNeutralCargo")]
-        class FixCargoDup 
+        class FixCargoDup
         {
-            static void Prefix(int inCurrentShipID, int inNetID) 
+            static void Prefix(int inCurrentShipID, int inNetID)
             {
                 if (PLEncounterManager.Instance != null)
                 {
@@ -1019,11 +1011,11 @@ namespace QualityImprover
                         PLShipComponent componentFromNetID = plshipInfo.MyStats.GetComponentFromNetID(inNetID);
                         if (componentFromNetID != null)
                         {
-                            if(plshipInfo.PersistantShipInfo != null)
+                            if (plshipInfo.PersistantShipInfo != null)
                             {
-                                foreach(ComponentOverrideData data in plshipInfo.PersistantShipInfo.CompOverrides) 
+                                foreach (ComponentOverrideData data in plshipInfo.PersistantShipInfo.CompOverrides)
                                 {
-                                    if(data.IsCargo && data.CompSubType == componentFromNetID.SubType && data.CompType == (int)componentFromNetID.ActualSlotType && data.CompLevel == componentFromNetID.Level) 
+                                    if (data.IsCargo && data.CompSubType == componentFromNetID.SubType && data.CompType == (int)componentFromNetID.ActualSlotType && data.CompLevel == componentFromNetID.Level)
                                     {
                                         plshipInfo.PersistantShipInfo.CompOverrides.Remove(data);
                                         break;
@@ -1036,9 +1028,9 @@ namespace QualityImprover
             }
         }
         [HarmonyPatch(typeof(PLShipInfoBase), "BeginWarp")]
-        class FixBountySpawner 
+        class FixBountySpawner
         {
-            static void Postfix() 
+            static void Postfix()
             {
                 UnityEngine.Object.Destroy(PLServer.Instance.MyHunterSpawner);
                 PLServer.Instance.MyHunterSpawner = null;
