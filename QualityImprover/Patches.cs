@@ -712,17 +712,16 @@ namespace QualityImprover
         {
             static UISprite NextPage;
             static UISprite PrevPage;
-            static UILabel PageCount;
             static int Page = 0;
             [HarmonyPatch(typeof(PLWarpStationScreen), "SetupUI")]
             class CreateButtons
             {
                 static void Postfix(PLWarpStationScreen __instance)
                 {
-                    PrevPage = __instance.CreateButton("PrevPage", "<", new Vector3(340f, -345f), new Vector2(70f, 40f), Color.white, __instance.WarpPanel.transform, UIWidget.Pivot.TopLeft);
-                    NextPage = __instance.CreateButton("NextPage", ">", new Vector3(410f, -345f), new Vector2(70f, 40f), Color.white, __instance.WarpPanel.transform, UIWidget.Pivot.TopLeft);
-                    float num = -45f + (__instance.WarpTargetButtons.Count % 7) * -42;
-                    float num2 = 20f + (__instance.WarpTargetButtons.Count / 7) * 160f;
+                    PrevPage = __instance.CreateButton("PrevPage", "<", new Vector3(340f, -425f), new Vector2(70f, 40f), Color.white, __instance.WarpPanel.transform, UIWidget.Pivot.TopLeft);
+                    NextPage = __instance.CreateButton("NextPage", ">", new Vector3(410f, -425f), new Vector2(70f, 40f), Color.white, __instance.WarpPanel.transform, UIWidget.Pivot.TopLeft);
+                    float num = -45f + (__instance.WarpTargetButtons.Count % 9) * -42;
+                    float num2 = 11f + (__instance.WarpTargetButtons.Count / 9) * 99f;
                     List<PLSectorInfo> sectors = new List<PLSectorInfo>
                     {
                         PLGlobal.Instance.Galaxy.GetSectorOfVisualIndication(ESectorVisualIndication.COLONIAL_HUB),
@@ -738,29 +737,31 @@ namespace QualityImprover
                         switch (plsectorInfo.VisualIndication)
                         {
                             case ESectorVisualIndication.COLONIAL_HUB:
-                                name = "Outpost";
+                                name = "Out448";
                                 break;
                             case ESectorVisualIndication.FLUFFY_FACTORY_01:
-                                name = "Fluffy 1";
+                                name = "Fluf 1";
                                 break;
                             case ESectorVisualIndication.FLUFFY_FACTORY_02:
-                                name = "Fluffy 2";
+                                name = "Fluf 2";
                                 break;
                             case ESectorVisualIndication.FLUFFY_FACTORY_03:
-                                name = "Fluffy 3";
+                                name = "Fluf 3";
                                 break;
                         }
-                        warpTargetInfo.Button = __instance.CreateButton("WTI_" + plsectorInfo.ID.ToString(), name, new Vector3(num2, num), new Vector2(140f, 40f), Color.white, __instance.WarpPanel.transform, UIWidget.Pivot.TopLeft);
+                        warpTargetInfo.Button = __instance.CreateButton("WTI_" + plsectorInfo.ID.ToString(), name, new Vector3(num2, num), new Vector2(96f, 40f), Color.white, __instance.WarpPanel.transform, UIWidget.Pivot.TopLeft);
                         num -= 42f;
-                        if (num < -300f)
+                        if (num < -390f)
                         {
-                            num2 += 160f;
+                            num2 += 99f;
                             num = -45f;
                         }
                         __instance.WarpTargetButtons.Add(warpTargetInfo);
                     }
-                    PageCount = __instance.CreateLabel("Page 1/" + ((__instance.WarpTargetButtons.Count / 21) + 1).ToString(), new Vector3(340f, -390f), 18, Color.white, __instance.WarpPanel.transform, UIWidget.Pivot.TopLeft);
-                    __instance.CancelButton.transform.position = PageCount.transform.position - new Vector3(0, 0.045f);
+                    __instance.CancelButton.transform.localPosition = new Vector3(235, - 425, 0);
+                    NextPage.name = "Next";
+                    PrevPage.name = "Prev";
+                    __instance.CancelButton.name = "Cancel";
                     Page = 0;
                 }
             }
@@ -769,7 +770,7 @@ namespace QualityImprover
             {
                 static void Postfix(PLWarpStationScreen __instance, UIWidget inButton)
                 {
-                    int maxPage = (__instance.WarpTargetButtons.Count - 1) / 21;
+                    int maxPage = (__instance.WarpTargetButtons.Count - 1) / 45;
                     if (__instance.MyWarpStation != null)
                     {
 
@@ -782,7 +783,7 @@ namespace QualityImprover
                                 {
                                     if (warpTargetInfo != null && warpTargetInfo.Button != null)
                                     {
-                                        warpTargetInfo.Button.transform.position -= new Vector3(0.1563f * 3, 0);
+                                        warpTargetInfo.Button.transform.position -= new Vector3(0.0967f * 5, 0);
                                     }
                                 }
                                 //__instance.CancelButton.transform.position -= new Vector3(0.1563f * 3, 0);
@@ -794,7 +795,7 @@ namespace QualityImprover
                                 {
                                     if (warpTargetInfo != null && warpTargetInfo.Button != null)
                                     {
-                                        warpTargetInfo.Button.transform.position += new Vector3(0.4689f * (maxPage), 0);
+                                        warpTargetInfo.Button.transform.position += new Vector3(0.0967f * 5 * (maxPage), 0);
                                     }
                                 }
                                 //__instance.CancelButton.transform.position += new Vector3(0.4689f * (maxPage), 0);
@@ -809,7 +810,7 @@ namespace QualityImprover
                                 {
                                     if (warpTargetInfo != null && warpTargetInfo.Button != null)
                                     {
-                                        warpTargetInfo.Button.transform.position += new Vector3(0.4689f, 0);
+                                        warpTargetInfo.Button.transform.position += new Vector3(0.0967f * 5, 0);
                                     }
                                 }
                                 //__instance.CancelButton.transform.position += new Vector3(0.4689f, 0);
@@ -821,13 +822,12 @@ namespace QualityImprover
                                 {
                                     if (warpTargetInfo != null && warpTargetInfo.Button != null)
                                     {
-                                        warpTargetInfo.Button.transform.position -= new Vector3(0.4689f * (maxPage), 0);
+                                        warpTargetInfo.Button.transform.position -= new Vector3(0.0967f * 5 * (maxPage), 0);
                                     }
                                 }
                                 //__instance.CancelButton.transform.position -= new Vector3(0.4689f * (maxPage), 0);
                             }
                         }
-                        PageCount.text = "Page " + (Page + 1).ToString() + "/" + (maxPage + 1).ToString();
                     }
 
                 }
