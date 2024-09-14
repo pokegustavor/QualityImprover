@@ -713,8 +713,8 @@ namespace QualityImprover
                 {
                     PrevPage = __instance.CreateButton("PrevPage", "<", new Vector3(340f, -425f), new Vector2(70f, 40f), Color.white, __instance.WarpPanel.transform, UIWidget.Pivot.TopLeft);
                     NextPage = __instance.CreateButton("NextPage", ">", new Vector3(410f, -425f), new Vector2(70f, 40f), Color.white, __instance.WarpPanel.transform, UIWidget.Pivot.TopLeft);
-                    float num = -45f + (__instance.WarpTargetButtons.Count % 9) * -42;
-                    float num2 = 11f + (__instance.WarpTargetButtons.Count / 9) * 99f;
+                    float x = 11f + (__instance.WarpTargetButtons.Count / 9) * 99f;
+                    float y = -45f + (__instance.WarpTargetButtons.Count % 9) * -42;
                     List<PLSectorInfo> sectors = new List<PLSectorInfo>
                     {
                         PLGlobal.Instance.Galaxy.GetSectorOfVisualIndication(ESectorVisualIndication.COLONIAL_HUB),
@@ -742,12 +742,12 @@ namespace QualityImprover
                                 name = "Fluf 3";
                                 break;
                         }
-                        warpTargetInfo.Button = __instance.CreateButton("WTI_" + plsectorInfo.ID.ToString(), name, new Vector3(num, num2), new Vector2(96f, 40f), Color.white, __instance.WarpPanel.transform, UIWidget.Pivot.TopLeft);
-                        num -= 42f;
-                        if (num < -390f)
+                        warpTargetInfo.Button = __instance.CreateButton("WTI_" + plsectorInfo.ID.ToString(), name, new Vector3(x, y), new Vector2(96f, 40f), Color.white, __instance.WarpPanel.transform, UIWidget.Pivot.TopLeft);
+                        y -= 42f;
+                        if (y < -390f)
                         {
-                            num2 += 99f;
-                            num = -45f;
+                            x += 99f;
+                            y = -45f;
                         }
                         __instance.WarpTargetButtons.Add(warpTargetInfo);
                     }
