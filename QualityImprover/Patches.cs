@@ -529,17 +529,6 @@ namespace QualityImprover
                 targetTransform.localScale = localScale;
             }
         }
-        [HarmonyPatch(typeof(PLServer), "SpawnPlayerShip")]
-        class NoAOGStart
-        {
-            static void Postfix(PLServer __instance)
-            {
-                if (PLEncounterManager.Instance.PlayerShip.ShipTypeID == EShipType.E_CIVILIAN_STARTING_SHIP || PLEncounterManager.Instance.PlayerShip.ShipTypeID == EShipType.OLDWARS_HUMAN)
-                {
-                    PLEncounterManager.Instance.PlayerShip.FactionID = -1;
-                }
-            }
-        }
         [HarmonyPatch(typeof(PLServer), "OnGameOver")]
         class FixTimerReset
         {
@@ -587,21 +576,25 @@ namespace QualityImprover
         [HarmonyPatch(typeof(PLSylvassiCypher), "Update")]
         class SyncedChyper
         {
-            static void Prefix(PLSylvassiCypher __instance)
+            static void Postfix(PLSylvassiCypher __instance)
             {
-                if (PLServer.Instance != null && !PhotonNetwork.isMasterClient)
+                if (PLServer.Instance != null && !PhotonNetwork.isMasterClient && !__instance.name.Contains("Fixed") && __instance.RoomEnabledBitField != 0)
                 {
-                    int sad = 0;
                     PLRand rand = new PLRand(PLServer.Instance.GalaxySeed + PLServer.Instance.GetCurrentHubID());
-                    sad = rand.Next(0, __instance.DesignMaterials.Length);
+                    rand.Next(0, __instance.DesignMaterials.Length);
                     for (int i = 0; i < __instance.RingOffsets.Length; i++)
                     {
                         if (i <= __instance.SetupFor_PlayerCount)
                         {
-                            sad = rand.Next(1, 8);
+                            rand.Next(1, 8);
                         }
                     }
-                    __instance.CenterCore.transform.localEulerAngles = new Vector3(__instance.CenterCore.transform.localEulerAngles.x, __instance.CenterCore.transform.localEulerAngles.y, rand.NextFloat() * 360f);
+                    Vector3 rotation = new Vector3(__instance.CenterCore.transform.localEulerAngles.x, __instance.CenterCore.transform.localEulerAngles.y, rand.NextFloat() * 360f);
+                    if(__instance.CenterCore.transform.localEulerAngles != rotation) 
+                    {
+                        __instance.CenterCore.transform.localEulerAngles = rotation;
+                        __instance.name += " Fixed";
+                    }
                 }
             }
         }
@@ -749,7 +742,7 @@ namespace QualityImprover
                                 name = "Fluf 3";
                                 break;
                         }
-                        warpTargetInfo.Button = __instance.CreateButton("WTI_" + plsectorInfo.ID.ToString(), name, new Vector3(num2, num), new Vector2(96f, 40f), Color.white, __instance.WarpPanel.transform, UIWidget.Pivot.TopLeft);
+                        warpTargetInfo.Button = __instance.CreateButton("WTI_" + plsectorInfo.ID.ToString(), name, new Vector3(num, num2), new Vector2(96f, 40f), Color.white, __instance.WarpPanel.transform, UIWidget.Pivot.TopLeft);
                         num -= 42f;
                         if (num < -390f)
                         {
@@ -766,7 +759,7 @@ namespace QualityImprover
                 }
             }
             [HarmonyPatch(typeof(PLWarpStationScreen), "OnButtonClick")]
-            class Update
+            class OnButtonPress
             {
                 static void Postfix(PLWarpStationScreen __instance, UIWidget inButton)
                 {
@@ -1034,6 +1027,17 @@ namespace QualityImprover
             {
                 UnityEngine.Object.Destroy(PLServer.Instance.MyHunterSpawner);
                 PLServer.Instance.MyHunterSpawner = null;
+            }
+        }
+        [HarmonyPatch(typeof(PLAbyssHullScreen),"Update")]
+        class FixUmbraDepthScreen 
+        {
+            static void Postfix(PLAbyssHullScreen __instance) 
+            {
+                if (!PLAbyssShipInfo.Instance.InMaxPressureScenario()) 
+                {
+                    __instance.DepthValue.text = (PLAbyssShipInfo.Instance.GetDepth() * -0.001f).ToString("0.0") + PLLocalize.Localize(" km", false);
+                }
             }
         }
     }
