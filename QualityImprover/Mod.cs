@@ -1,5 +1,4 @@
 ﻿using PulsarModLoader;
-[assembly: System.Runtime.CompilerServices.IgnoresAccessChecksTo("Assembly-CSharp")]
 namespace QualityImprover
 {
     public class Mod : PulsarMod
