@@ -1037,5 +1037,17 @@ namespace QualityImprover
                 }
             }
         }
+        [HarmonyPatch(typeof(PLPawnInventoryBase), "UpdateItem")]
+        class FixEquipingKeyCards
+        {
+            static void Postfix(PLPawnInventoryBase __instance, int inNetID)
+            {
+                PLPawnItem itemAtNetID = __instance.GetItemAtNetID(inNetID);
+                if (itemAtNetID.PawnItemType == EPawnItemType.E_KEYCARD)
+                {
+                    itemAtNetID.CanBeEquipped = false;
+                }
+            }
+        }
     }
 }
