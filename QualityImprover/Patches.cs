@@ -1049,5 +1049,46 @@ namespace QualityImprover
                 }
             }
         }
+        [HarmonyPatch(typeof(PLShipControl), "FixedUpdate")]
+        class DirectManeuverUpDownReflectionFix
+        {
+            static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
+            {
+                List<CodeInstruction> instructionslist = instructions.ToList();
+                
+                int count = 0;
+                object localVariable = null;
+                for (int i = 0; i < instructionslist.Count; i++)
+                {
+                    if (instructionslist[i].opcode == OpCodes.Stloc_S)
+                    {
+                        count++;
+                        if (count == 18)
+                        {
+                            localVariable = instructionslist[i].operand;
+                            UnityEngine.Debug.Log($"{localVariable.ToString()}");
+                        }
+                    }
+                    if (localVariable != null)
+                    {
+                        if (instructionslist[i].opcode == OpCodes.Ldloc_S && instructionslist[i].operand.Equals(localVariable))
+                        {
+                            if (instructionslist[i+1].opcode == OpCodes.Ldc_R4)
+                            {
+                                UnityEngine.Debug.Log("Quality Improver Transpiler patching");
+                                instructionslist.Insert(i + 1, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(DirectManeuverUpDownReflectionFix), "DoesUpDownNeedToBeInverted")));
+                                instructionslist.RemoveRange(i + 2, 1);
+                                break;
+                            }
+                        }
+                    }
+                }
+                return instructionslist;
+            }
+            private static float DoesUpDownNeedToBeInverted()
+            {
+                return PLServer.Instance != null && PLServer.Instance.IsReflection_FlipIsActiveLocal && PLInput.Instance.GetButton(PLInputBase.EInputActionName.maneuver_mode_hold) ? -1 : 1;
+            }
+        }
     }
 }
