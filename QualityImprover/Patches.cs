@@ -1,15 +1,12 @@
-﻿using HarmonyLib;
-using System.Collections.Generic;
+﻿using CodeStage.AntiCheat.ObscuredTypes;
+using HarmonyLib;
 using System;
-using UnityEngine;
-using CodeStage.AntiCheat.ObscuredTypes;
-using UnityEngine.UI;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection.Emit;
+using UnityEngine;
+using UnityEngine.UI;
 using static PulsarModLoader.Patches.HarmonyHelpers;
-using OculusSampleFramework;
-using System.Diagnostics;
-using static OVRLipSync;
-using System.ComponentModel;
 
 namespace QualityImprover
 {
