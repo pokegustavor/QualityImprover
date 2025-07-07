@@ -1,15 +1,12 @@
-﻿using HarmonyLib;
-using System.Collections.Generic;
+﻿using CodeStage.AntiCheat.ObscuredTypes;
+using HarmonyLib;
 using System;
-using UnityEngine;
-using CodeStage.AntiCheat.ObscuredTypes;
-using UnityEngine.UI;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection.Emit;
+using UnityEngine;
+using UnityEngine.UI;
 using static PulsarModLoader.Patches.HarmonyHelpers;
-using OculusSampleFramework;
-using System.Diagnostics;
-using static OVRLipSync;
-using System.ComponentModel;
 
 namespace QualityImprover
 {
@@ -975,7 +972,7 @@ namespace QualityImprover
         {
             static void Postfix(PLPersistantShipInfo inPSI)
             {
-                if (PLEncounterManager.Instance.GetCPEI().LevelID != 136 && inPSI.ShipName.Contains("(Saved)") && inPSI.ShipInstance != null)
+                if (PLEncounterManager.Instance.GetCPEI().LevelID != 136 && inPSI != null && inPSI.ShipName.Contains("(Saved)") && inPSI.ShipInstance != null)
                 {
                     inPSI.ShipInstance.ShipNameValue = inPSI.ShipInstance.ShipNameValue.Remove(inPSI.ShipInstance.ShipNameValue.IndexOf("(Saved)"), 7);
                     List<PLShipComponent> compToDie = new List<PLShipComponent>();
@@ -1038,6 +1035,59 @@ namespace QualityImprover
                 {
                     __instance.DepthValue.text = (PLAbyssShipInfo.Instance.GetDepth() * -0.001f).ToString("0.0") + PLLocalize.Localize(" km", false);
                 }
+            }
+        }
+        [HarmonyPatch(typeof(PLPawnInventoryBase), "UpdateItem")]
+        class FixEquipingKeyCards
+        {
+            static void Postfix(PLPawnInventoryBase __instance, int inNetID)
+            {
+                PLPawnItem itemAtNetID = __instance.GetItemAtNetID(inNetID);
+                if (itemAtNetID.PawnItemType == EPawnItemType.E_KEYCARD)
+                {
+                    itemAtNetID.CanBeEquipped = false;
+                }
+            }
+        }
+        [HarmonyPatch(typeof(PLShipControl), "FixedUpdate")]
+        class DirectManeuverUpDownReflectionFix
+        {
+            static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
+            {
+                List<CodeInstruction> instructionslist = instructions.ToList();
+                
+                int count = 0;
+                object localVariable = null;
+                for (int i = 0; i < instructionslist.Count; i++)
+                {
+                    if (instructionslist[i].opcode == OpCodes.Stloc_S)
+                    {
+                        count++;
+                        if (count == 18)
+                        {
+                            localVariable = instructionslist[i].operand;
+                            UnityEngine.Debug.Log($"{localVariable.ToString()}");
+                        }
+                    }
+                    if (localVariable != null)
+                    {
+                        if (instructionslist[i].opcode == OpCodes.Ldloc_S && instructionslist[i].operand.Equals(localVariable))
+                        {
+                            if (instructionslist[i+1].opcode == OpCodes.Ldc_R4)
+                            {
+                                UnityEngine.Debug.Log("Quality Improver Transpiler patching");
+                                instructionslist.Insert(i + 1, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(DirectManeuverUpDownReflectionFix), "DoesUpDownNeedToBeInverted")));
+                                instructionslist.RemoveRange(i + 2, 1);
+                                break;
+                            }
+                        }
+                    }
+                }
+                return instructionslist;
+            }
+            private static float DoesUpDownNeedToBeInverted()
+            {
+                return PLServer.Instance != null && PLServer.Instance.IsReflection_FlipIsActiveLocal && PLInput.Instance.GetButton(PLInputBase.EInputActionName.maneuver_mode_hold) ? -1 : 1;
             }
         }
     }
