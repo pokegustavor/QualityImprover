@@ -10,7 +10,7 @@ using static PulsarModLoader.Patches.HarmonyHelpers;
 
 namespace QualityImprover
 {
-    public class Patches
+    namespace Patches
     {
         [HarmonyPatch(typeof(PLShipInfoBase), "UpdateVirusSendQueue")]
         class BetterVirusTargeting
