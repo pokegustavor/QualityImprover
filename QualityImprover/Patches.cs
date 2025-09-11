@@ -1350,7 +1350,7 @@ namespace QualityImprover
             [HarmonyPatch(typeof(PLShipInfo), "<CreateSalvageOpUIs>b__360_1")]
             class ExtractScreenFixesGoRight
             {
-                //Disables the go right button on the extractor screen 
+                //Disables the go right button on the extractor screen when the host doesn't have the mod and they aren't on board to prevent desync
                 static bool Prefix(PLShipInfo __instance, int ___SalvageComp_ID, List<PLShipComponent> ___m_CachedSalvageableComponents)
                 {
                     if (!(MasterClientHasUpdatedMod || IsHostOnBoard()))
@@ -1372,6 +1372,7 @@ namespace QualityImprover
             [HarmonyPatch(typeof(PLShipInfo), "<CreateSalvageOpUIs>b__360_2")]
             class ExtractScreenFixesGoLeft
             {
+                //Disables the go left button on the extractor screen when the host doesn't have the mod and they aren't on board to prevent desync
                 static bool Prefix(PLShipInfo __instance, int ___SalvageComp_ID, List<PLShipComponent> ___m_CachedSalvageableComponents)
                 {
                     if (!(MasterClientHasUpdatedMod || IsHostOnBoard()))
