@@ -1262,7 +1262,7 @@ namespace QualityImprover
                             for (int i = salvageCompIndex; i < 0; i++)
                             {
                                 instance.photonView.RPC("SalvageNext", PhotonTargets.MasterClient, new object[0]);
-                                await Task.Delay(200);
+                                await Task.Delay(100);
                             }
                         }
                         if (salvageCompIndex > salvageableComponentsCount)
