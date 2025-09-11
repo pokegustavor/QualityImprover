@@ -1068,6 +1068,8 @@ namespace QualityImprover
                 }
             }
         }
+        
+
         [HarmonyPatch(typeof(PLShipControl), "FixedUpdate")]
         class DirectManeuverUpDownReflectionFix
         {
@@ -1085,7 +1087,6 @@ namespace QualityImprover
                         if (count == 18)
                         {
                             localVariable = instructionslist[i].operand;
-                            UnityEngine.Debug.Log($"{localVariable.ToString()}");
                         }
                     }
                     if (localVariable != null)
