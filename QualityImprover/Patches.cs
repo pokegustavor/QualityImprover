@@ -1037,15 +1037,34 @@ namespace QualityImprover
                 }
             }
         }
-        [HarmonyPatch(typeof(PLPawnInventoryBase), "UpdateItem")]
-        class FixEquipingKeyCards
+        //This fixes it client side and server side by never letting it equip on client end and unequipping it on everyone elses end
+        class KeycardFixes
         {
-            static void Postfix(PLPawnInventoryBase __instance, int inNetID)
+            //Fixes it on client end by immediately unequipping the keycard
+            //There is a half second where it is equipped because the game is imperfect
+            [HarmonyPatch(typeof(PLPawnInventoryBase), "UpdateItem")]
+            class FixEquippingKeyCardsClientSide
             {
-                PLPawnItem itemAtNetID = __instance.GetItemAtNetID(inNetID);
-                if (itemAtNetID.PawnItemType == EPawnItemType.E_KEYCARD)
+                static void Postfix(PLPawnInventory __instance, int inNetID, int inEquipID)
                 {
-                    itemAtNetID.CanBeEquipped = false;
+                    if (inEquipID != -1)
+                    {
+                        PLPawnItem item = __instance.GetItemAtNetID(inNetID);
+                        if (item.PawnItemType == EPawnItemType.E_KEYCARD)
+                        {
+                            __instance.photonView.RPC("ServerEquip", PhotonTargets.All, new object[] { inNetID, -1 });
+                        }
+                    }
+                }
+            }
+            //Fixes host side by making keycards unequippable
+            //Do note that if an error occurs and it still gets equipped somehow, unequipping is still possible even if CanBeEquipped is false
+            [HarmonyPatch(typeof(PLPawnItem_Keycard), MethodType.Constructor, new Type[] { typeof(int) })]
+            class FixEquippingKeyCardsHostSide
+            {
+                static void Postfix(PLPawnItem_Keycard __instance)
+                {
+                    __instance.CanBeEquipped = false;
                 }
             }
         }
