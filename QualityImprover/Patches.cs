@@ -1,16 +1,20 @@
 ﻿using CodeStage.AntiCheat.ObscuredTypes;
 using HarmonyLib;
+using PulsarModLoader.MPModChecks;
+using PulsarModLoader.Patches;
+using PulsarModLoader.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Emit;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 using static PulsarModLoader.Patches.HarmonyHelpers;
 
 namespace QualityImprover
 {
-    public class Patches
+    namespace Patches
     {
         [HarmonyPatch(typeof(PLShipInfoBase), "UpdateVirusSendQueue")]
         class BetterVirusTargeting
@@ -1037,18 +1041,39 @@ namespace QualityImprover
                 }
             }
         }
-        [HarmonyPatch(typeof(PLPawnInventoryBase), "UpdateItem")]
-        class FixEquipingKeyCards
+        //This fixes it client side and server side by never letting it equip on client end and unequipping it on everyone elses end
+        class KeycardFixes
         {
-            static void Postfix(PLPawnInventoryBase __instance, int inNetID)
+            //Fixes it on client end by immediately unequipping the keycard
+            //There is a half second where it is equipped because the game is imperfect
+            [HarmonyPatch(typeof(PLPawnInventoryBase), "UpdateItem")]
+            class FixEquippingKeyCardsClientSide
             {
-                PLPawnItem itemAtNetID = __instance.GetItemAtNetID(inNetID);
-                if (itemAtNetID.PawnItemType == EPawnItemType.E_KEYCARD)
+                static void Postfix(PLPawnInventory __instance, int inNetID, int inEquipID)
                 {
-                    itemAtNetID.CanBeEquipped = false;
+                    if (inEquipID != -1)
+                    {
+                        PLPawnItem item = __instance.GetItemAtNetID(inNetID);
+                        if (item.PawnItemType == EPawnItemType.E_KEYCARD)
+                        {
+                            __instance.photonView.RPC("ServerEquip", PhotonTargets.All, new object[] { inNetID, -1 });
+                        }
+                    }
+                }
+            }
+            //Fixes host side by making keycards unequippable
+            //Do note that if an error occurs and it still gets equipped somehow, unequipping is still possible even if CanBeEquipped is false
+            [HarmonyPatch(typeof(PLPawnItem_Keycard), MethodType.Constructor, new Type[] { typeof(int) })]
+            class FixEquippingKeyCardsHostSide
+            {
+                static void Postfix(PLPawnItem_Keycard __instance)
+                {
+                    __instance.CanBeEquipped = false;
                 }
             }
         }
+        
+
         [HarmonyPatch(typeof(PLShipControl), "FixedUpdate")]
         class DirectManeuverUpDownReflectionFix
         {
@@ -1066,7 +1091,6 @@ namespace QualityImprover
                         if (count == 18)
                         {
                             localVariable = instructionslist[i].operand;
-                            UnityEngine.Debug.Log($"{localVariable.ToString()}");
                         }
                     }
                     if (localVariable != null)
@@ -1090,5 +1114,339 @@ namespace QualityImprover
                 return PLServer.Instance != null && PLServer.Instance.IsReflection_FlipIsActiveLocal && PLInput.Instance.GetButton(PLInputBase.EInputActionName.maneuver_mode_hold) ? -1 : 1;
             }
         }
+        
+        class ExtractorFixes
+        {
+            public static int HostSalvageID = 0;
+            public static Task AsyncNonHostSyncer = null;
+            internal static bool MasterClientHasUpdatedMod = false;
+            [HarmonyPatch(typeof(PLShipInfo), "UpdateSalvageUI")]
+            internal class FixExtractorForPlayerShipUpdating
+            {
+                static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
+                {
+                    List<CodeInstruction> instructionslist = instructions.ToList();
+                    //Switches extractor screen updating to run if it is the playership or local player is on board to keep everything running on the playership all the time
+                    //And have the screens look right on other unclaimed ships
+                    CodeInstruction[] targetSequence = new CodeInstruction[]
+                    {
+                        new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(PLShipInfo), "LocalPlayerOnboard")),
+                    };
+                    CodeInstruction[] ReplacementSequence = new CodeInstruction[]
+                    {
+                        new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(FixExtractorForPlayerShipUpdating), "PatchMethod1")),
+                    };
+                    instructionslist = HarmonyHelpers.PatchBySequence(instructions, targetSequence, ReplacementSequence, PatchMode.REPLACE, CheckMode.NONNULL, false).ToList();
+                    //Patches the condition of an if statement to be something else so that it can hide the extractor screen when the host is out of sync if the host doesn't have the mod and instead display the fix host sync button
+                    targetSequence = new CodeInstruction[]
+                    {
+                        new CodeInstruction(OpCodes.Ldarg_0, null),//kept
+                        new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(PLShipInfo), "SalvageComp_ID")),//removed
+                        new CodeInstruction(OpCodes.Ldc_I4_M1, null),//kept
+                        new CodeInstruction(OpCodes.Beq, null)//kept
+                    };
+                    ReplacementSequence = new CodeInstruction[]
+                    {
+                        //new CodeInstruction(OpCodes.Ldarg_0, null), not removed from target sequence just reused
+                        new CodeInstruction(OpCodes.Dup, null),
+                        new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(PLShipInfo), "SalvageComp_ID")),
+                        new CodeInstruction(OpCodes.Ldarg_0),
+                        new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(PLShipInfo), "m_CachedSalvageableComponents")),
+                        new CodeInstruction(OpCodes.Ldarg_0),
+                        new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(PLShipInfo), "SalvageUIRoot")),
+                        new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(FixExtractorForPlayerShipUpdating), "PatchMethod2"))
+                    };
+                    int index = HarmonyHelpers.FindSequence(instructions, targetSequence, CheckMode.NONNULL, false);
+                    if (index != -1)
+                    {
+                        index = index - targetSequence.Length;
+                        instructionslist.RemoveRange(index + 1, targetSequence.Length - 3);
+                        instructionslist.InsertRange(index + 1, ReplacementSequence);
+                    }
+                    else
+                    {
+                        Debug.Log("Failed to find Sequence for extrator client side syncing fix");
+                    }
+                    return instructionslist;
+                }
+                //replacement method for running if the ship is the playership or has local player onboard
+                static bool PatchMethod1(PLShipInfo instance)
+                {
+                    return PLEncounterManager.Instance.PlayerShip == instance || instance.LocalPlayerOnboard();
+                }
+                static int PatchMethod2(PLShipInfo instance, int salvageCompID, List<PLShipComponent> extractableComponents, GameObject salvageUIRoot)
+                {
+                    if (PLEncounterManager.Instance.PlayerShip != instance)
+                    {
+                        return -1;
+                    }
+                    if (MasterClientHasUpdatedMod)
+                    {
+                        return salvageCompID;
+                    }
+                    //Creates a new button if the new playership doesn't have the fix host button already
+                    if (instance != storedCurrentShip)
+                    {
+                        storedCurrentShip = instance;
+                        //tries to find currently existing fix host button
+                        Transform temp = salvageUIRoot.transform.Find("SyncBtn");
+                        //Creates new fix host button
+                        if (temp == null)
+                        {
+                            syncButton = new GameObject("SyncBtn", new Type[]
+                            {
+                                typeof(Image),
+                                typeof(Button)
+                            });
+                            Button component = syncButton.GetComponent<Button>();
+                            Image image = syncButton.GetComponent<Image>();
+                            image.sprite = PLGlobal.Instance.TabFillSprite;
+                            image.type = Image.Type.Sliced;
+                            image.transform.SetParent(salvageUIRoot.transform);
+                            component.transform.localPosition = Vector3.zero;
+                            component.transform.localRotation = Quaternion.identity;
+                            component.transform.localScale = Vector3.one;
+                            component.gameObject.layer = 3;
+                            component.GetComponent<RectTransform>().anchoredPosition3D = component.transform.localPosition;
+                            component.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 250f);
+                            component.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, 50f);
+                            ColorBlock colors = component.colors;
+                            colors.normalColor = Color.gray;
+                            component.colors = colors;
+                            component.onClick.AddListener(delegate
+                            {
+                                //Code to run the syncing method
+                                if (AsyncNonHostSyncer == null || AsyncNonHostSyncer.IsCompleted)
+                                {
+                                    Messaging.Notification("Ran Client Side Sync");
+                                    int i = HostSalvageID;
+                                    int count = extractableComponents.Count;
+                                    AsyncNonHostSyncer = NonModdedHostSynctoClient(instance, i, count);
+                                }
+                            });
+                            GameObject gameObject = new GameObject("SyncBtnLabel", new Type[] { typeof(Text) });
+                            gameObject.transform.SetParent(syncButton.transform);
+                            gameObject.transform.localPosition = Vector3.zero;
+                            gameObject.transform.localRotation = Quaternion.identity;
+                            gameObject.transform.localScale = Vector3.one;
+                            Text component2 = gameObject.GetComponent<Text>();
+                            component2.alignment = TextAnchor.MiddleCenter;
+                            component2.resizeTextForBestFit = true;
+                            component2.resizeTextMinSize = 8;
+                            component2.resizeTextMaxSize = 18;
+                            component2.color = Color.black;
+                            component2.raycastTarget = false;
+                            component2.text = "Fix Host Extractor";
+                            component2.font = PLGlobal.Instance.MainFont;
+                            component2.GetComponent<RectTransform>().anchoredPosition3D = component2.transform.localPosition;
+                            component2.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 200f);
+                            component2.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, 50f);
+                        }
+                        else
+                        {
+                            syncButton = temp.gameObject;
+                        }
+                    }
+                    bool flag = HostSalvageID < 0 || HostSalvageID > extractableComponents.Count;
+                    PLGlobal.SafeGameObjectSetActive(syncButton, flag);
+                    return flag ? -1 : 0;
+                }
+                private static async Task NonModdedHostSynctoClient(PLShipInfo instance, int salvageCompIndex, int salvageableComponentsCount)
+                {
+                    await Task.Yield();
+                    //need to wrap in try catch block if playership dies
+                    try
+                    {
+                        if (salvageCompIndex < 0)
+                        {
+                            for (int i = salvageCompIndex; i < 0; i++)
+                            {
+                                instance.photonView.RPC("SalvageNext", PhotonTargets.MasterClient, new object[0]);
+                                await Task.Delay(100);
+                            }
+                        }
+                        if (salvageCompIndex > salvageableComponentsCount)
+                        {
+                            for (int i = salvageCompIndex; i >= salvageableComponentsCount; i--)
+                            {
+                                instance.photonView.RPC("SalvagePrev", PhotonTargets.MasterClient, new object[0]);
+                                await Task.Delay(100);
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        return;
+                    }
+                    await Task.Delay(1000);
+                }
+                internal static void DeleteButtonOnUnload()
+                {
+                    storedCurrentShip = null;
+                    GameObject.Destroy(syncButton);
+                }
+                private static PLShipInfo storedCurrentShip = null;
+                private static GameObject syncButton = null;
+            }
+            [HarmonyPatch(typeof(PLShipInfo), "OnPhotonSerializeView")]
+            class ClientExtractSyncFix
+            {
+                private static float NextCheckTime = float.MinValue;
+                //Currently when you click the button to switch what component is being looked at on the extractor screen, for the next 2 seconds it becomes client sided with the host side extractor value not being synced
+                //What this transpiler does is always copu the host side value for the playerships extractor component index to a static value
+                //Which can then be read by other parts of the extractor fixes to keep track of if the host is synced or not
+                static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+                {
+                    List<CodeInstruction> instructionslist = instructions.ToList();
+                    CodeInstruction[] targetSequence = new CodeInstruction[]
+                    {
+                        //kept for clarity of what is being patched
+                        //new CodeInstruction(OpCodes.Ldarg_1, null),
+                        //new CodeInstruction(OpCodes.Callvirt, AccessTools.Method(typeof(PhotonStream), "RecieveNext")),
+                        //new CodeInstruction(OpCodes.Unbox_Any, null),
+                        new CodeInstruction(OpCodes.Stloc_S, null),//7
+                        new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Time), "get_time")),
+                        new CodeInstruction(OpCodes.Ldarg_0, null),
+                        new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(PLShipInfo), "LastLocalSalvageCompIDChangedTime")),
+                        new CodeInstruction(OpCodes.Sub, null),
+                        new CodeInstruction(OpCodes.Ldc_R4, 2f),
+                        new CodeInstruction(OpCodes.Ble_Un_S),
+                        new CodeInstruction(OpCodes.Ldarg_0, null),
+                        new CodeInstruction(OpCodes.Ldloc_S, null),
+                        new CodeInstruction(OpCodes.Stfld, AccessTools.Field(typeof(PLShipInfo), "SalvageComp_ID"))
+                    };
+                    CodeInstruction[] ReplacementSequence = new CodeInstruction[]
+                    {
+                        //new CodeInstruction(OpCodes.Stsfld, AccessTools.Field(typeof(HostToClientExtractSyncFix), "TempSalvageID"))
+                        new CodeInstruction(OpCodes.Ldarg_0, null),
+                        new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(ClientExtractSyncFix), "ReadSalvageData"))
+                    };
+                    return HarmonyHelpers.PatchBySequence(instructions, targetSequence, ReplacementSequence, PatchMode.REPLACE, CheckMode.NONNULL, false);
+                }
+                public static void ReadSalvageData(int inputID, PLShipInfo instance)
+                {
+                    if (instance.GetIsPlayerShip())
+                    {
+                        HostSalvageID = inputID;
+                    }
+                }
+                //This postfix reimplements the delayed syncing after pressing the button that changes the component being looked at on the extractor
+                static void Postfix(PLShipInfo __instance, ref PhotonStream stream, ref int ___SalvageComp_ID, List<PLShipComponent> ___m_CachedSalvageableComponents)
+                {
+                    //iswriting checks if the playership is owned by the player, it should always be owned by the host but good to check, also if it iswriting then it is syncing data to others so it does not need to to run the sync to host code
+                    //won't run if master client or if the ship isn't the playership
+                    if (stream.isWriting || PhotonNetwork.isMasterClient || !__instance.GetIsPlayerShip())
+                    {
+                        return;
+                    }
+                    if (Time.time - __instance.LastLocalSalvageCompIDChangedTime > 2f)
+                    {
+                        ___SalvageComp_ID = HostSalvageID;
+                    }
+                    return;
+                }
+                
+            }
+            [HarmonyPatch(typeof(PLShipInfo), "<CreateSalvageOpUIs>b__360_1")]
+            class ExtractScreenFixesGoRight
+            {
+                //Disables the go right button on the extractor screen when the host doesn't have the mod and they aren't on board to prevent desync
+                static bool Prefix(PLShipInfo __instance, int ___SalvageComp_ID, List<PLShipComponent> ___m_CachedSalvageableComponents)
+                {
+                    if (!(MasterClientHasUpdatedMod || IsHostOnBoard()))
+                    {
+                        bool flag = ___SalvageComp_ID < (___m_CachedSalvageableComponents.Count - 1) && (AsyncNonHostSyncer == null || AsyncNonHostSyncer.IsCompleted);
+                        if (flag)
+                        {
+                            HostSalvageID++;
+                        }
+                        else
+                        {
+                            Messaging.Notification("Extractor cannot loop as host is not on board");
+                        }
+                        return flag;
+                    }
+                    return true;
+                }
+            }
+            [HarmonyPatch(typeof(PLShipInfo), "<CreateSalvageOpUIs>b__360_2")]
+            class ExtractScreenFixesGoLeft
+            {
+                //Disables the go left button on the extractor screen when the host doesn't have the mod and they aren't on board to prevent desync
+                static bool Prefix(PLShipInfo __instance, int ___SalvageComp_ID, List<PLShipComponent> ___m_CachedSalvageableComponents)
+                {
+                    if (!(MasterClientHasUpdatedMod || IsHostOnBoard()))
+                    {
+                        bool flag = ___SalvageComp_ID > 0 && (AsyncNonHostSyncer == null || AsyncNonHostSyncer.IsCompleted);
+                        if (flag)
+                        {
+                            HostSalvageID--;
+                        }
+                        else
+                        {
+                            Messaging.Notification("Extractor cannot loop as host is not on board");
+                        }
+                        return flag;
+                    }
+                    return true;
+                }
+            }
+            //Method to be run in an event to check host mod version of quality improver and set MasterClientHasUpdatedMod to true if they possess a newer version than the one prior to this release
+            //So that various extractor client side fixes can know if they need to run or not
+            internal static void ExtractorFixesHostVersionCheck(PhotonPlayer player)
+            {
+                if (PhotonNetwork.isMasterClient)
+                {
+                    MasterClientHasUpdatedMod = true;
+                    return;
+                }
+                if (player == PhotonNetwork.masterClient)
+                {
+                    MasterClientHasUpdatedMod = false;
+                    if (MPModCheckManager.Instance.GetNetworkedPeerModlistExists(player))
+                    {
+                        MPUserDataBlock playerModInfo = MPModCheckManager.Instance.GetNetworkedPeerMods(player);
+                        foreach (MPModDataBlock modDataBlock in playerModInfo.ModData)
+                        {
+                            if (modDataBlock.HarmonyIdentifier.Equals(Mod.Instance.HarmonyIdentifier()))
+                            {
+                                string[] version = modDataBlock.Version.Split('.');
+                                if (version.Length > 2)
+                                {
+                                    //2.3.6 is the version prior to when this is was originally made
+                                    if (Int32.Parse(version[0]) > 2)
+                                    {
+                                        MasterClientHasUpdatedMod = true;
+                                    }
+                                    if (Int32.Parse(version[1]) > 3)
+                                    {
+                                        MasterClientHasUpdatedMod = true;
+                                    }
+                                    if (Int32.Parse(version[2]) > 6)
+                                    {
+                                        MasterClientHasUpdatedMod = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            //Method to check if host is on board for client side extractor scrolling fixes
+            internal static bool IsHostOnBoard()
+            {
+                PLPlayer host = null;
+                foreach(PLPlayer player in PLServer.Instance.AllPlayers)
+                {
+                    if (player.PhotonPlayer == PhotonNetwork.masterClient)
+                    {
+                        host = player;
+                        break;
+                    }
+                }
+                return PLEncounterManager.Instance.PlayerShip != null && host != null && PLEncounterManager.Instance.PlayerShip.MyTLI == host.MyCurrentTLI;
+            }
+        }
     }
 }
+
