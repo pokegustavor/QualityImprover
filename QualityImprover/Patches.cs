@@ -1505,7 +1505,7 @@ namespace QualityImprover
 
             [HarmonyPatch(typeof(PLUIMainMenu), nameof(PLUIMainMenu.Start))]
             [HarmonyPostfix]
-            static void Postfix() //Adds extra components to the conent gameobject of the scrollview to make it always scale correctly when rebuilt
+            static void Postfix() //Adds extra components to the content gameobject of the scrollview to make it always scale correctly when rebuilt
             {
                 GameObject content = PLTabMenu.Instance.ItemShopMenu.MainScrollView.transform.Find("Viewport").Find("Content").gameObject;
                 content.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
