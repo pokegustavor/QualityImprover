@@ -1532,6 +1532,37 @@ namespace QualityImprover
                 }
             }
         }
+        [HarmonyPatch(typeof(PLPersistantEncounterInstance), nameof(PLPersistantEncounterInstance.InitGame))]
+        class LostColonyWarpGuardianStatusScreenPatches
+        {
+            static void Postfix(PLPersistantEncounterInstance __instance)
+            {
+                if (__instance is PLLCEncounter)
+                {
+                    SetupScreen(__instance);
+                }   
+            }
+            static async void SetupScreen(PLPersistantEncounterInstance psi)
+            {
+                while (PLNetworkManager.Instance?.CurrentGame == null || !psi.GameInitWithHubID || PLEncounterManager.Instance?.GetCPEI() != psi)
+                    await Task.Yield();
+
+                Transform volume = UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects()[4].transform.GetChild(81).GetChild(0);
+                volume.position = new Vector3(1042.037f, -510.7432f, 446.3594f);
+                volume.rotation = Quaternion.Euler(new Vector3(315f, 13f, 0f));
+                Transform Quad5 = volume.GetChild(0);
+                Quad5.position = new Vector3(1042.039f, -514.9441f, 446.3789f);
+                Transform Quad18 = volume.GetChild(1);
+                Quad18.position = new Vector3(1041.143f, -514.9592f, 446.5723f);
+                Quad18.localRotation = Quaternion.Euler(new Vector3(0f, 180f, 0f));
+                Transform Quad17 = volume.GetChild(2);
+                Quad17.position = new Vector3(1040.324f, -514.9541f, 447.1758f);
+
+                Transform Quad4 = volume.GetChild(3);
+                Quad4.position = new Vector3(1043.612f, -514.9543f, 447.4082f);
+            }
+        }
+
     }
 }
 
