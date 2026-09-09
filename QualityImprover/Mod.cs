@@ -11,7 +11,7 @@ namespace QualityImprover
             Events.Instance.ClientModlistRecievedEvent += QualityImprover.Patches.ExtractorFixes.ExtractorFixesHostVersionCheck;
         }
         internal static Mod Instance;
-        public override string Version => "2.3.8";
+        public override string Version => "2.3.9";
 
         public override string Author => "pokegustavo, OnHyex";
 

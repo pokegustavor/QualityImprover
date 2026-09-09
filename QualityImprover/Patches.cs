@@ -1488,6 +1488,81 @@ namespace QualityImprover
                 }
             }
         }
+        [HarmonyPatch]
+        class ShopScrollFix
+        {
+            static int checkDisplayMode = -1;
+            [HarmonyPatch(typeof(PLItemShopMenu), nameof(PLItemShopMenu.Update))]
+            [HarmonyPostfix]
+            static void Postfix(PLItemShopMenu __instance) //Force Rebuilds the layout when switching between the buy/sell menu
+            {
+                if (__instance.DisplayMode != checkDisplayMode)
+                {
+                    checkDisplayMode = __instance.DisplayMode;
+                    LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)__instance.MainScrollView.transform);
+                }
+            }
+
+            [HarmonyPatch(typeof(PLUIMainMenu), nameof(PLUIMainMenu.Start))]
+            [HarmonyPostfix]
+            static void Postfix() //Adds extra components to the content gameobject of the scrollview to make it always scale correctly when rebuilt
+            {
+                GameObject content = PLTabMenu.Instance.ItemShopMenu.MainScrollView.transform.Find("Viewport").Find("Content").gameObject;
+                content.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                content.AddComponent<ShopScreenLayoutElement>();
+            }
+            class ShopScreenLayoutElement : LayoutElement
+            {
+                public override float preferredHeight //This calculates the correct height needed to contain all the different objects in the shop
+                {
+                    get
+                    {
+                        float height = 50f;
+                        PLItemShopMenu instance = PLTabMenu.Instance.ItemShopMenu;
+                        foreach (PLShopItemDisplay item in instance.AllSIDs)
+                        {
+                            if (item.IsSellView == (instance.DisplayMode == 1))
+                            {
+                                height += 85f;
+                            }
+                        }
+                        return height;
+                    }
+                    set => base.preferredHeight = value;
+                }
+            }
+        }
+        [HarmonyPatch(typeof(PLPersistantEncounterInstance), nameof(PLPersistantEncounterInstance.InitGame))]
+        class LostColonyWarpGuardianStatusScreenPatches
+        {
+            static void Postfix(PLPersistantEncounterInstance __instance)
+            {
+                if (__instance is PLLCEncounter)
+                {
+                    SetupScreen(__instance);
+                }   
+            }
+            static async void SetupScreen(PLPersistantEncounterInstance psi)
+            {
+                while (PLNetworkManager.Instance?.CurrentGame == null || !psi.GameInitWithHubID || PLEncounterManager.Instance?.GetCPEI() != psi)
+                    await Task.Yield();
+
+                Transform volume = UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects()[4].transform.GetChild(81).GetChild(0);
+                volume.position = new Vector3(1042.037f, -510.7432f, 446.3594f);
+                volume.rotation = Quaternion.Euler(new Vector3(315f, 13f, 0f));
+                Transform Quad5 = volume.GetChild(0);
+                Quad5.position = new Vector3(1042.039f, -514.9441f, 446.3789f);
+                Transform Quad18 = volume.GetChild(1);
+                Quad18.position = new Vector3(1041.143f, -514.9592f, 446.5723f);
+                Quad18.localRotation = Quaternion.Euler(new Vector3(0f, 180f, 0f));
+                Transform Quad17 = volume.GetChild(2);
+                Quad17.position = new Vector3(1040.324f, -514.9541f, 447.1758f);
+
+                Transform Quad4 = volume.GetChild(3);
+                Quad4.position = new Vector3(1043.612f, -514.9543f, 447.4082f);
+            }
+        }
+
     }
 }
 
